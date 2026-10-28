@@ -66,7 +66,7 @@ Stable card `id`s let a re-import merge and keep review progress.
 ### Phase 0 — Setup
 - [x] Scaffold Vite + React + TS, Vitest, ESLint
 - [x] `vite-plugin-pwa`: manifest, icons, offline precache
-- [ ] Deploy empty shell to free hosting; install on phone ("Add to Home Screen") to validate
+- [x] Deploy to GitHub Pages: https://jairogilc.github.io/flashcards/ (install on phone still to validate)
 
 ### Phase 1 — Data + scheduler (TDD)
 - [x] Dexie schema: `decks`, `cards`, `media` (ArrayBuffer — iOS-safe), `reviews` (log)
