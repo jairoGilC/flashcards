@@ -1,0 +1,161 @@
+import { afterEach, describe, expect, it } from 'vitest'
+import { cleanup, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import Review from '../Review'
+import type { KotobaDB } from '../../db/db'
+import { CardState } from '../../core/scheduler'
+import { card, deck, dueSrs, freshDb, renderWith, seed } from './testUtils'
+
+let db: KotobaDB
+// Unmount first so live queries stop before the DB closes (afterEach runs before RTL's auto-cleanup).
+afterEach(() => {
+  cleanup()
+  db?.close()
+})
+
+const flip = () => userEvent.click(screen.getByRole('button', { name: 'Girar carta' }))
+const grade = (name: RegExp) => userEvent.click(screen.getByRole('button', { name }))
+
+describe('Review', () => {
+  it('flips, grades, persists the rating and ends with a summary', async () => {
+    db = freshDb()
+    await seed(db, [deck('d', { name: 'JLPT N5' })], [
+      card('d', 'a', { question: '毎朝おにぎりを[食べます]。', answer: '食べる', reading: 'たべる', meaning: 'comer', translation: 'Como un onigiri cada mañana.', srs: dueSrs() }),
+      card('d', 'b', { question: '話す', answer: '話す', meaning: 'hablar', srs: dueSrs() }),
+    ])
+    renderWith(db, <Review />)
+
+    expect(await screen.findByText('1 / 2')).toBeInTheDocument()
+    expect(screen.getByText('Repaso diario · mixto')).toBeInTheDocument()
+    await flip()
+    const first = screen.getByTestId('answer').textContent!
+    const bien = screen.getByRole('button', { name: /^Bien/ })
+    expect(bien.className).toMatch(/glow/)
+    await grade(/^Bien/)
+
+    expect(await screen.findByText('2 / 2')).toBeInTheDocument()
+    const rows = await db.reviews.toArray()
+    expect(rows).toHaveLength(1)
+    expect(rows[0].grade).toBe('good')
+    const rated = await db.cards.get(rows[0].cardId)
+    expect(rated!.answer).toBe(first)
+    expect(rated!.srs.due).toBeGreaterThan(Date.now() + 60 * 60 * 1000)
+
+    await flip()
+    expect(screen.getByTestId('answer').textContent).not.toBe(first)
+    await grade(/^Fácil/)
+
+    expect(await screen.findByText('¡Repaso completado!')).toBeInTheDocument()
+    expect(screen.getByText('Bien').closest('li')).toHaveTextContent('1')
+    expect(screen.getByText('Fácil').closest('li')).toHaveTextContent('1')
+    expect(screen.getByRole('link', { name: /Volver a mis mazos/ })).toHaveAttribute('href', '#/')
+    expect(await db.reviews.count()).toBe(2)
+  })
+
+  it('shows the answer side details', async () => {
+    db = freshDb()
+    await seed(db, [deck('d', { name: 'JLPT N5' })], [
+      card('d', 'a', { question: '毎朝おにぎりを[食べます]。', answer: '食べる', reading: 'たべる', meaning: 'comer', translation: 'Como un onigiri cada mañana.', srs: dueSrs() }),
+    ])
+    renderWith(db, <Review />)
+    expect(await screen.findByText('¿Cuál es la palabra subrayada?')).toBeInTheDocument()
+    await flip()
+    expect(screen.getByTestId('answer')).toHaveTextContent('食べる')
+    expect(screen.getByTestId('answer')).toHaveAttribute('lang', 'ja')
+    expect(screen.getByText('たべる')).toBeInTheDocument()
+    expect(screen.getByText('comer')).toBeInTheDocument()
+    expect(screen.getByText('Como un onigiri cada mañana.')).toBeInTheDocument()
+    // Four grade buttons with interval previews.
+    expect(screen.getByRole('button', { name: /^Otra vez/ })).toHaveTextContent(/min/)
+  })
+
+  it('asks "¿Qué significa?" for a bare word', async () => {
+    db = freshDb()
+    await seed(db, [deck('d')], [card('d', 'a', { question: '話す', srs: dueSrs() })])
+    renderWith(db, <Review />)
+    expect(await screen.findByText('¿Qué significa?')).toBeInTheDocument()
+  })
+
+  it('brings an "Otra vez" card back later in the same session', async () => {
+    db = freshDb()
+    await seed(db, [deck('d')], [card('d', 'nuevo', { answer: '猫' })])
+    renderWith(db, <Review />)
+
+    expect(await screen.findByText('1 / 1')).toBeInTheDocument()
+    await flip()
+    await grade(/^Otra vez/)
+
+    expect(await screen.findByText('2 / 2')).toBeInTheDocument()
+    const c = await db.cards.get('d::nuevo')
+    expect(c!.srs.state).toBe(CardState.Learning)
+    await flip()
+    expect(screen.getByTestId('answer')).toHaveTextContent('猫')
+    await grade(/^Bien/)
+    // A good answer on a learning step may need one more step; finish whatever is left.
+    // Grading is async (DB write), so wait for the next card or the summary before each step.
+    const next = () => waitFor(() => expect(screen.queryByText('¡Repaso completado!') ?? screen.getByRole('button', { name: 'Girar carta' })).toBeInTheDocument())
+    await next()
+    while (!screen.queryByText('¡Repaso completado!')) {
+      await flip()
+      await grade(/^Fácil/)
+      await next()
+    }
+    expect(await db.reviews.count()).toBeGreaterThanOrEqual(2)
+  })
+
+  it('supports Space to flip and 1–4 to grade', async () => {
+    db = freshDb()
+    await seed(db, [deck('d')], [card('d', 'a', { srs: dueSrs() })])
+    renderWith(db, <Review />)
+    await screen.findByText('1 / 1')
+    await userEvent.keyboard(' ')
+    expect(await screen.findByTestId('answer')).toBeInTheDocument()
+    await userEvent.keyboard('3')
+    expect(await screen.findByText('¡Repaso completado!')).toBeInTheDocument()
+    expect((await db.reviews.toArray())[0].grade).toBe('good')
+  })
+
+  it('focuses on one deck and titles the session with its name', async () => {
+    db = freshDb()
+    await seed(db, [deck('a', { name: 'Verbos' }), deck('b', { name: 'Otro' })], [
+      card('a', '1', { srs: dueSrs() }),
+      card('b', '1', { srs: dueSrs() }),
+    ])
+    renderWith(db, <Review deckId="a" />)
+    expect(await screen.findByText('1 / 1')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Verbos' })).toBeInTheDocument()
+  })
+
+  it('locks a red deck while red decks are hidden', async () => {
+    db = freshDb()
+    await seed(db, [deck('r', { name: 'Jerga', rating: 'red' })], [card('r', '1', { srs: dueSrs() })])
+    renderWith(db, <Review deckId="r" />)
+    expect(await screen.findByText(/Este mazo es rojo/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Girar carta' })).not.toBeInTheDocument()
+  })
+
+  it('shows a calm state when nothing is due', async () => {
+    db = freshDb()
+    await seed(db, [deck('d')], [])
+    renderWith(db, <Review />)
+    expect(await screen.findByText('Nada por repasar hoy')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Volver a mis mazos/ })).toHaveAttribute('href', '#/')
+  })
+
+  it('shows an error instead of hanging when the cards cannot be read', async () => {
+    db = freshDb()
+    await db.open()
+    db.close()
+    renderWith(db, <Review />)
+    expect(await screen.findByRole('alert')).toHaveTextContent(/No se pudieron cargar las cartas/)
+    expect(screen.queryByText('Barajando cartas…')).toBeNull()
+  })
+
+  it('has a close button back home', async () => {
+    db = freshDb()
+    await seed(db, [deck('d')], [card('d', 'a', { srs: dueSrs() })])
+    renderWith(db, <Review />)
+    expect(await screen.findByRole('link', { name: 'Cerrar repaso' })).toHaveAttribute('href', '#/')
+    await screen.findByRole('button', { name: 'Girar carta' })
+  })
+})

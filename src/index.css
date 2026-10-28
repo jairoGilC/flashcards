@@ -1,0 +1,182 @@
+/* Palette and type roles ported from TCGVault/kotoba-deck Theme.swift. One committed theme, no dark variant. */
+:root {
+  --parchment: #f2e9d2;
+  --parchment-light: #f7f0dc;
+  --parchment-deep: #eadcba;
+  --paper: #fffdf6;
+  --ink: #3b3020;
+  --ink-dim: #5e4a14; /* darker than Swift's inkDim so small text passes 4.5:1 on parchment */
+  --gold: #b9974a;
+  --gold-bright: #d9b452;
+  --gold-pale: #f7e3a0;
+  --gold-deep: #8a6d1f;
+  --indigo: #241c44;
+  --indigo-deep: #161129;
+  --indigo-soft: #3a2f66;
+  --purple-glow: #7b5fd0;
+  --lilac: #cfc6e8;
+  --lilac-dim: #b7aed6;
+  --chassis: #0e0b14;
+  --ruby: #c11f36;
+  --amber: #d99a1f;
+  --emerald: #2e8a48;
+  --emerald-deep: #237339;
+  --sapphire: #1d7fb5;
+  --sapphire-deep: #186a97;
+
+  --font-chrome: 'Barlow Condensed', 'Avenir Next Condensed', sans-serif;
+  --font-display: 'Shippori Mincho', 'Hiragino Mincho ProN', serif;
+  --font-body: 'Noto Sans JP', system-ui, sans-serif;
+
+  --halftone-gold: radial-gradient(rgba(217, 180, 82, 0.14) 1px, transparent 1.4px) 0 0 / 12px 12px;
+  --halftone-ink: radial-gradient(rgba(185, 151, 74, 0.16) 1px, transparent 1.4px) 0 0 / 12px 12px;
+  --night: var(--halftone-gold), linear-gradient(180deg, var(--indigo), var(--indigo-deep));
+  --gold-fill: linear-gradient(180deg, #e6c463, var(--gold));
+  --gold-rim: linear-gradient(135deg, var(--parchment-light), var(--gold-deep), var(--gold-bright));
+  --speed-lines: repeating-conic-gradient(from 0deg at 50% 58%, rgba(255, 255, 255, 0.1) 0deg 5deg, transparent 5deg 14deg);
+
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--indigo-deep);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--ink-dim);
+}
+
+:focus-visible {
+  outline: 2px solid var(--gold-pale);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.chrome {
+  font-family: var(--font-chrome);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+.mincho {
+  font-family: var(--font-display);
+}
+
+.facet {
+  --cut: 10px;
+  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
+}
+
+.facet-s {
+  --cut: 6px;
+}
+
+/* Screens */
+.screen {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: max(16px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+  gap: 14px;
+}
+
+.screen--night {
+  background: var(--night);
+  color: var(--parchment-light);
+}
+
+.screen--paper {
+  background: var(--halftone-ink), var(--parchment);
+  color: var(--ink);
+}
+
+.phone-column {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.panel {
+  border-radius: 14px;
+  background: linear-gradient(180deg, var(--parchment-light), var(--parchment-deep));
+  border: 1.5px solid var(--gold);
+  color: var(--ink);
+  padding: 14px;
+}
+
+.label {
+  font-family: var(--font-chrome);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.field {
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1.5px solid var(--gold);
+  background: #fff;
+  color: var(--ink);
+}
+
+textarea.field {
+  height: auto;
+  padding: 10px 12px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pulse {
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 4px rgba(217, 180, 82, 0.25), 0 0 24px rgba(217, 180, 82, 0.45);
+    }
+    50% {
+      box-shadow: 0 0 0 6px rgba(217, 180, 82, 0.3), 0 0 40px rgba(217, 180, 82, 0.8);
+    }
+  }
+  .flip-in {
+    animation: flip-in 260ms ease-out;
+  }
+  @keyframes flip-in {
+    from {
+      transform: perspective(900px) rotateY(-80deg);
+      opacity: 0.2;
+    }
+    to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+}
