@@ -264,11 +264,16 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  /* When the content is taller than the box, overflow downwards so it can be scrolled (Safari 17.6+). */
-  justify-content: safe center;
+  /* Centered with auto margins, which (unlike justify-content: center) never push overflow above the top. */
+  justify-content: flex-start;
   gap: 10px;
   color: var(--ink);
+}
+.tcg-card__body > :first-child {
+  margin-top: auto;
+}
+.tcg-card__body > :last-child {
+  margin-bottom: auto;
 }
 
 .hint-art {

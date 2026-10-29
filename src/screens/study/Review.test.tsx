@@ -81,6 +81,9 @@ describe('Review', () => {
     await db.media.put({ id: 'd::onigiri.webp', deckId: 'd', name: 'onigiri.webp', type: 'image/webp', data: new ArrayBuffer(3) })
     renderWith(db, <Review />)
     await screen.findByRole('button', { name: 'Girar carta' })
+    // Give a (wrong) image lookup on the question side time to finish before asserting it never happened.
+    await new Promise((r) => setTimeout(r, 50))
+    expect(createUrl).not.toHaveBeenCalled()
     expect(screen.queryByRole('img', { name: 'Pista visual' })).toBeNull()
     await flip()
     expect(await screen.findByRole('img', { name: 'Pista visual' })).toBeInTheDocument()

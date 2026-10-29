@@ -490,6 +490,8 @@
   gap: 14px;
 }
 .answer-word {
+  /* Fallback for Safari < 16, which drops the inline cqw size. */
+  font-size: 40px;
   font-weight: 800;
   line-height: 1.1;
 }

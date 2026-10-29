@@ -73,8 +73,8 @@ describe('answerSize', () => {
 
 describe('answerFont', () => {
   it('uses the full size on a 300 px card and shrinks with smaller cards', () => {
-    // About full size on a 300 px card (1cqw ≈ 3 px), smaller on shrunk cards.
-    expect(answerFont('おにぎり')).toBe('min(40px, 13.33cqw)')
-    expect(answerFont('猫')).toBe('min(54px, 18cqw)')
+    // A 300 px card has a 286 px content box, so 1cqw = 2.86 px and both terms agree there.
+    expect(answerFont('おにぎり')).toBe('min(40px, 13.99cqw)')
+    expect(answerFont('猫')).toBe('min(54px, 18.88cqw)')
   })
 })

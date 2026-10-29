@@ -52,5 +52,6 @@ export function answerSize(text: string): number {
 /** CSS font size for the answer: answerSize on a 300 px card, scaled down with the card (which is a size container). */
 export function answerFont(text: string): string {
   const px = answerSize(text)
-  return `min(${px}px, ${+(px / 3).toFixed(2)}cqw)`
+  // The card's content box is 286 px wide at full size (300 minus 7 px padding each side).
+  return `min(${px}px, ${+(px / 2.86).toFixed(2)}cqw)`
 }
