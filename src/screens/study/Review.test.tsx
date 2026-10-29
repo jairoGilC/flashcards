@@ -77,7 +77,7 @@ describe('Review', () => {
     const createUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:hint')
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
     db = freshDb()
-    await seed(db, [deck('d')], [card('d', 'a', { question: 'おにぎり', imageId: 'd::onigiri.webp', srs: dueSrs() })])
+    await seed(db, [deck('d')], [card('d', 'a', { question: '[おにぎり]を食べます。', answer: '御握り', imageId: 'd::onigiri.webp', srs: dueSrs() })])
     await db.media.put({ id: 'd::onigiri.webp', deckId: 'd', name: 'onigiri.webp', type: 'image/webp', data: new ArrayBuffer(3) })
     renderWith(db, <Review />)
     await screen.findByRole('button', { name: 'Girar carta' })
@@ -89,6 +89,22 @@ describe('Review', () => {
     expect(await screen.findByRole('img', { name: 'Pista visual' })).toBeInTheDocument()
     // Only the answer side ever loaded the image.
     expect(createUrl).toHaveBeenCalledTimes(1)
+    // The art window holds just the image; the sentence sits in the text box below.
+    const art = document.querySelector('.tcg-card__art')!
+    expect(art).not.toHaveTextContent('おにぎり')
+    expect(document.querySelector('.tcg-card__body')).toHaveTextContent('おにぎり')
+  })
+
+  it('has no art window on the question side, nor on an answer without an image', async () => {
+    db = freshDb()
+    await seed(db, [deck('d')], [card('d', 'a', { question: '毎朝おにぎりを[食べます]。', answer: '食べる', srs: dueSrs() })])
+    renderWith(db, <Review />)
+    await screen.findByRole('button', { name: 'Girar carta' })
+    expect(document.querySelector('.tcg-card__art')).toBeNull()
+    await flip()
+    expect(document.querySelector('.tcg-card__art')).toBeNull()
+    // The sentence moves into the answer's text box, next to its translation.
+    expect(document.querySelector('.tcg-card__body u')).toHaveTextContent('食べます')
   })
 
   it('asks "¿Qué significa?" for a bare word', async () => {

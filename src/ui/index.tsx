@@ -166,7 +166,8 @@ export function TcgCard({
   artHeight,
   className = '',
 }: {
-  art: ReactNode
+  /** Omit for a text-only card: the band then sits at the top. */
+  art?: ReactNode
   band: ReactNode
   children: ReactNode
   width?: number | string
@@ -175,10 +176,12 @@ export function TcgCard({
   className?: string
 }) {
   return (
-    <article className={`tcg-card tcg-card--${glow} ${className}`} style={{ width }}>
-      <div className="tcg-card__art" style={{ height: artHeight }}>
-        {art}
-      </div>
+    <article className={`tcg-card tcg-card--${glow} ${art == null ? 'tcg-card--no-art' : ''} ${className}`} style={{ width }}>
+      {art != null && (
+        <div className="tcg-card__art" style={{ height: artHeight }}>
+          {art}
+        </div>
+      )}
       <div className="tcg-card__band">{band}</div>
       <div className="tcg-card__body">{children}</div>
     </article>

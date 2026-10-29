@@ -134,7 +134,7 @@ export default function Review({ deckId }: { deckId?: string }) {
   const title = deckId ? (load.status === 'locked' ? load.deck.name : load.status === 'ready' ? load.decks.get(deckId)?.name : undefined) : 'Repaso diario · mixto'
 
   return (
-    <main className="screen screen--night review">
+    <main className={`screen screen--night review ${current && deck ? 'review--card' : ''}`}>
       <div className="phone-column review__column">
         <header className="review__header">
           <IconButton label="Cerrar repaso" href={href('home')}>

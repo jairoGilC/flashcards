@@ -324,6 +324,10 @@
   padding-left: 16px;
   padding-right: 16px;
 }
+/* While a card is up the screen is exactly one viewport tall, so the stage has a definite height to fill. */
+.review--card {
+  height: 100dvh;
+}
 .review__column {
   flex: 1;
   display: flex;
@@ -372,11 +376,6 @@
   align-items: center;
   justify-content: center;
   min-height: 0;
-}
-.review__stage .filigree {
-  display: flex;
-  justify-content: center;
-  max-width: 100%;
 }
 .review__flip .facet-btn__body {
   min-height: 52px;
@@ -435,54 +434,19 @@
   white-space: nowrap;
 }
 .face-question {
-  font-size: clamp(20px, 7vw, 27px);
+  /* 30 px on a 300 px card; grows with bigger cards. */
+  font-size: 10.5cqw;
 }
 .face-prompt {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ink-dim);
   text-align: center;
 }
-.answer-art {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 8px 12px;
-}
-.answer-art__img {
-  position: relative;
-  width: 72px;
-  height: 72px;
-  flex-shrink: 0;
-}
-/* Sized from the art window so the image shrinks with the card on short screens. */
-.answer-art--image .answer-art__img {
-  height: 100%;
-  max-height: 130px;
-  max-width: 45%;
-  width: auto;
-  aspect-ratio: 1;
-}
-.answer-art__img .hint-art__glyph {
-  font-size: 44px;
-}
-.answer-art__img .hint-art__chip,
-.answer-art__img .hint-art__spark {
-  display: none;
-}
-.answer-art__q {
-  font-size: 15px;
+/* The sentence, below the meaning and above its translation. */
+.answer-sentence {
+  font-size: 17px;
   font-weight: 500;
-  color: var(--paper);
-  text-align: left;
-  max-width: 60%;
-}
-.answer-art__q u {
-  text-decoration-color: var(--gold-pale);
-  text-decoration-thickness: 2px;
 }
 .answer-row {
   display: flex;
@@ -695,7 +659,19 @@
   inset: -8px -4px;
 }
 
-/* Lets the answer font scale with the card (cqw) on short screens. */
-.face-back {
+/* Lets text on both faces scale with the card (cqw). */
+.study-card {
   container-type: inline-size;
+}
+/* The largest 5:7 card that fits the stage: full height, unless that would be wider than the stage. */
+.study-slot {
+  height: 100%;
+  aspect-ratio: 5 / 7;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+}
+/* The image speaks for itself on the answer side. */
+.study-card .hint-art__chip {
+  display: none;
 }

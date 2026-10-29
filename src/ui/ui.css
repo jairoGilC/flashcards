@@ -254,6 +254,10 @@
   letter-spacing: 0.14em;
   font-size: 12px;
 }
+.tcg-card--no-art .tcg-card__band {
+  border-top: none;
+  border-radius: 10px 10px 0 0;
+}
 .tcg-card__body {
   flex: 1;
   min-height: 0;

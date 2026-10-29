@@ -3,7 +3,7 @@ import { useApp } from '../../app/AppContext'
 import type { CardRow, DeckRow } from '../../db/db'
 import { saveCard } from '../../db/repo'
 import { resizeImage } from '../../media/resizeImage'
-import { HintArt, Icon, QuestionText, TcgCard, deckArt } from '../../ui'
+import { Icon, QuestionText, TcgCard, deckArt } from '../../ui'
 import { useBlobUrl, useMediaUrl } from './media'
 import { formatBytes, validateCard, type CardErrors } from './validate'
 
@@ -266,11 +266,6 @@ export function CardForm({ deck, editing, onDone }: { deck: DeckRow; editing?: C
           width={240}
           glow="none"
           band={<span>Pregunta</span>}
-          art={
-            <div className="ed-preview__art" style={{ background: art.background }}>
-              <HintArt fallbackGlyph={art.glyph} />
-            </div>
-          }
         >
           {fields.question.trim() ? (
             <QuestionText question={fields.question} className="ed-preview__q" />

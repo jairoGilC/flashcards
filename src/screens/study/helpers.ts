@@ -49,9 +49,8 @@ export function answerSize(text: string): number {
   return 30
 }
 
-/** CSS font size for the answer: answerSize on a 300 px card, scaled down with the card (which is a size container). */
+/** CSS font size for the answer: answerSize on a 300 px card, scaled with the card (which is a size container). */
 export function answerFont(text: string): string {
-  const px = answerSize(text)
-  // The card's content box is 286 px wide at full size (300 minus 7 px padding each side).
-  return `min(${px}px, ${+(px / 2.86).toFixed(2)}cqw)`
+  // A 300 px card's content box is 286 px wide (7 px padding each side).
+  return `${+(answerSize(text) / 2.86).toFixed(2)}cqw`
 }

@@ -430,10 +430,6 @@
   align-items: center;
   gap: 10px;
 }
-.ed-preview__art {
-  position: absolute;
-  inset: 0;
-}
 .ed-preview__q {
   font-size: 21px;
   overflow-wrap: anywhere;

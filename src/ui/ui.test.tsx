@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { DiamondPips, DueDiamond, FacetButton, QuestionText, RatingChip, Toggle, deckArt } from './index'
+import { DiamondPips, DueDiamond, FacetButton, QuestionText, RatingChip, TcgCard, Toggle, deckArt } from './index'
 
 describe('DueDiamond', () => {
   it('shows the count and an accessible label', () => {
@@ -76,5 +76,13 @@ describe('RatingChip / deckArt', () => {
     expect(a.glyph).toBe('動')
     expect(deckArt({ id: 'n5', name: 'JLPT N5 · 動詞', rating: 'green' })).toEqual(a)
     expect(deckArt({ id: 'x', name: 'Slang', rating: 'red' }).background).toMatch(/#8E1426/i)
+  })
+})
+
+describe('TcgCard', () => {
+  it('leaves out the art window when there is no art', () => {
+    const { container } = render(<TcgCard band="Pregunta">本</TcgCard>)
+    expect(container.querySelector('.tcg-card__art')).toBeNull()
+    expect(container.querySelector('.tcg-card--no-art')).not.toBeNull()
   })
 })

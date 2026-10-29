@@ -206,6 +206,8 @@ describe('Editor · card form', () => {
     await u.type(screen.getByLabelText(/^Pregunta/), '本を[[読む]。')
     expect(within(preview).getByText('Pregunta')).toBeInTheDocument()
     expect(preview.querySelector('u')).toHaveTextContent('読む')
+    // Same as the study question side: no art window.
+    expect(preview.querySelector('.tcg-card__art')).toBeNull()
   })
 
   it('edits an existing card from the table and keeps its review progress', async () => {
