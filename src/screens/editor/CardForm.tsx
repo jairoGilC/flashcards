@@ -94,7 +94,8 @@ export function CardForm({ deck, editing, onDone }: { deck: DeckRow; editing?: C
     if (found.answer) return answerRef.current?.focus()
     setSaving(true)
     try {
-      await saveCard(db, { id: editing?.id, deckId: deck.id, ...fields, image }, Date.now())
+      // Tags have no field here; keep the ones a card got from an import.
+      await saveCard(db, { id: editing?.id, deckId: deck.id, ...fields, tags: editing?.tags, image }, Date.now())
     } finally {
       setSaving(false)
     }

@@ -35,7 +35,7 @@ export function CsvImport({ deckId, onClose }: { deckId: string; onClose: () => 
         </button>
       </div>
       <p className="ed-help">
-        Una carta por línea: pregunta, respuesta, lectura, significado, traducción. Separado por comas o tabuladores; la fila de títulos es opcional.
+        Una carta por línea: pregunta, respuesta, lectura, significado. Separado por comas o tabuladores; la fila de títulos es opcional.
       </p>
       <label className="label" htmlFor="ed-csv-text">
         Pega aquí las filas

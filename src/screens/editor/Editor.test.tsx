@@ -213,7 +213,7 @@ describe('Editor · card form', () => {
   it('edits an existing card from the table and keeps its review progress', async () => {
     const u = user()
     const id = await withDeck()
-    const cardId = await saveCard(db, { deckId: id, question: '話す', answer: '話す', meaning: 'hablar', translation: 'Hablo.' }, Date.now())
+    const cardId = await saveCard(db, { deckId: id, question: '話す', answer: '話す', meaning: 'hablar', translation: 'Hablo.', tags: ['n5'] }, Date.now())
     await rateCard(db, cardId, 'good', Date.now())
     const before = (await db.cards.get(cardId))!.srs
     expect(before.state).not.toBe(CardState.New)
@@ -232,6 +232,8 @@ describe('Editor · card form', () => {
     await waitFor(async () => expect((await db.cards.get(cardId))?.meaning).toBe('hablar, decir'))
     // A translation that came from an import or an older version is kept, not wiped.
     expect((await db.cards.get(cardId))!.translation).toBe('Hablo.')
+    // Same for tags from deck.json / .apkg imports, which have no field in the form either.
+    expect((await db.cards.get(cardId))!.tags).toEqual(['n5'])
     expect((await db.cards.get(cardId))!.srs).toEqual(before)
     expect(await db.cards.count()).toBe(1)
     expect(await screen.findByRole('heading', { name: 'Nueva carta' })).toBeInTheDocument()
