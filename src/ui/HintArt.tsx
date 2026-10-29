@@ -4,7 +4,20 @@ import { useApp } from '../app/AppContext'
 import { Sparkle } from './index'
 
 /** The card's art window content: the hint image if the card has one, otherwise the deck glyph. */
-export function HintArt({ imageId, fallbackGlyph, label = 'Pista visual', size = '70%' }: { imageId?: string; fallbackGlyph: string; label?: string; size?: string }) {
+/** `fill` scales the image to the whole window (contain: never cropped) instead of capping it at `size`. */
+export function HintArt({
+  imageId,
+  fallbackGlyph,
+  label = 'Pista visual',
+  size = '70%',
+  fill = false,
+}: {
+  imageId?: string
+  fallbackGlyph: string
+  label?: string
+  size?: string
+  fill?: boolean
+}) {
   const { db } = useApp()
   const media = useLiveQuery(() => (imageId ? db.media.get(imageId) : undefined), [db, imageId])
   const [url, setUrl] = useState<string>()
@@ -24,7 +37,11 @@ export function HintArt({ imageId, fallbackGlyph, label = 'Pista visual', size =
       {url ? (
         <>
           <span className="hint-art__chip chrome">{label}</span>
-          <img src={url} alt={label} style={{ maxWidth: size, maxHeight: size }} />
+          {fill ? (
+            <img src={url} alt={label} className="hint-art__img--fill" />
+          ) : (
+            <img src={url} alt={label} style={{ maxWidth: size, maxHeight: size }} />
+          )}
         </>
       ) : (
         <span className="hint-art__glyph mincho" lang="ja" aria-hidden="true">

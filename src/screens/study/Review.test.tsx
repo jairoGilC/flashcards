@@ -95,6 +95,10 @@ describe('Review', () => {
     // The art window holds just the image; the sentence sits in the text box below.
     const art = document.querySelector('.tcg-card__art')
     expect(art).not.toBeNull()
+    // The art window takes the space the text doesn't need, and the image fills it (scaled, never cropped).
+    expect(document.querySelector('.study-card')).toHaveClass('study-card--image')
+    expect(art!.getAttribute('style') ?? '').not.toMatch(/height/)
+    expect(screen.getByRole('img', { name: 'Pista visual' })).toHaveClass('hint-art__img--fill')
     expect(art).not.toHaveTextContent('おにぎり')
     expect(document.querySelector('.tcg-card__body')).toHaveTextContent('おにぎり')
   })

@@ -665,15 +665,33 @@
 .study-card {
   container-type: inline-size;
 }
-/* The largest 5:7 card that fits the stage: full height, unless that would be wider than the stage. */
+/* The card fills the stage: full height, and 5:7 wide unless that is wider than the stage. On tall
+   phones that makes it taller than 5:7, which leaves more room for the image. */
 .study-slot {
   height: 100%;
   aspect-ratio: 5 / 7;
   max-width: 100%;
   display: flex;
-  align-items: center;
+}
+.study-slot > .study-card {
+  aspect-ratio: auto;
+  height: 100%;
 }
 /* The image speaks for itself on the answer side. */
 .study-card .hint-art__chip {
   display: none;
+}
+
+/* With an image, the text box takes only the height its content needs and the art window gets the
+   rest, so cards with little text get a bigger image. A floor keeps some image on text-heavy cards. */
+.study-card--image .tcg-card__art {
+  flex: 1 1 0;
+  min-height: 28%;
+}
+.study-card--image .tcg-card__body {
+  flex: 0 1 auto;
+}
+/* A little inset so the image doesn't touch the gold frame. */
+.study-card--image .hint-art {
+  inset: 6px;
 }

@@ -54,10 +54,9 @@ export function BackFace({ card, deck }: { card: CardRow; deck: DeckRow }) {
       <TcgCard
         width="100%"
         glow="gold"
-        artHeight="40%"
-        className="flip-in study-card"
+        className={`flip-in study-card ${card.imageId ? 'study-card--image' : ''}`}
         // Only the image goes in the art window; without one the card is text only.
-        art={card.imageId ? <HintArt imageId={card.imageId} fallbackGlyph={deckArt(deck).glyph} size="88%" /> : undefined}
+        art={card.imageId ? <HintArt imageId={card.imageId} fallbackGlyph={deckArt(deck).glyph} fill /> : undefined}
         band={<DeckBand label="Respuesta" deck={deck} />}
       >
         <div className="answer-row">
