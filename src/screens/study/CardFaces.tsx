@@ -16,6 +16,9 @@ function CardSlot({ children, slotRef }: { children: ReactNode; slotRef?: RefObj
 /** Smallest share of the card the image keeps when the text needs a lot of room (the text then scrolls). */
 const MIN_ART_SHARE = 0.28
 
+/** A computed CSS length in px; 0 when it isn't set (e.g. in tests without layout). */
+const px = (v: string) => parseFloat(v) || 0
+
 /**
  * Size of the image frame: the image's own proportions, as large as fits above the text. Re-measured
  * whenever the card resizes. Undefined until the image has loaded and the card has been laid out.
@@ -32,18 +35,18 @@ function useImageFrame(slotRef: RefObject<HTMLDivElement>, ratio: number | undef
       if (!card || !band || !body || !body.firstElementChild || !body.lastElementChild) return
       const cardStyle = getComputedStyle(card)
       const bodyStyle = getComputedStyle(body)
-      const cardPad = parseFloat(cardStyle.paddingTop) + parseFloat(cardStyle.paddingBottom)
+      const cardPad = px(cardStyle.paddingTop) + px(cardStyle.paddingBottom)
       // Layout offsets, not getBoundingClientRect: the back face measures while its flip-in animation (a 3D
       // transform) may still be running, and transformed boxes would read too tall.
       const first = body.firstElementChild as HTMLElement
       const last = body.lastElementChild as HTMLElement
       const textHeight =
         last.offsetTop + last.offsetHeight - first.offsetTop +
-        parseFloat(bodyStyle.paddingTop) +
-        parseFloat(bodyStyle.paddingBottom)
+        px(bodyStyle.paddingTop) +
+        px(bodyStyle.paddingBottom)
       const inner = card.clientHeight - cardPad
       const room = Math.max(inner * MIN_ART_SHARE, inner - band.offsetHeight - textHeight)
-      const width = card.clientWidth - parseFloat(cardStyle.paddingLeft) - parseFloat(cardStyle.paddingRight)
+      const width = card.clientWidth - px(cardStyle.paddingLeft) - px(cardStyle.paddingRight)
       const fit = fitFrame(ratio, width, room)
       setFrame({ ...fit, narrow: fit.width < width - 1 })
     }
@@ -55,6 +58,7 @@ function useImageFrame(slotRef: RefObject<HTMLDivElement>, ratio: number | undef
     const observer = new ResizeObserver(measure)
     observer.observe(slot)
     // The text box's first and last children size with the text, not with the art window, so this can't loop.
+    // (Middle children are only re-measured through these or fonts.ready.)
     const body = slot.querySelector('.tcg-card__body')
     for (const child of [body?.firstElementChild, body?.lastElementChild]) if (child) observer.observe(child)
     return () => {

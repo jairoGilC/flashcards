@@ -132,6 +132,8 @@ describe('Review', () => {
         if (broken) fireEvent.error(broken)
         expect(document.querySelector('.tcg-card__art')).toBeNull()
       })
+      // Still a full answer, just without the image.
+      expect(screen.getByTestId('answer')).toHaveTextContent(/^(猫|犬)$/)
       await grade(/^Bien/)
       await waitFor(() => expect(screen.queryByText('¡Repaso completado!') ?? screen.getByRole('button', { name: 'Girar carta' })).toBeInTheDocument())
     }
