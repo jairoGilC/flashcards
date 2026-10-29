@@ -193,7 +193,7 @@ export function CardForm({ deck, editing, onDone }: { deck: DeckRow; editing?: C
         </div>
 
         <div className="ed-field">
-          <span className="label">Pista visual (opcional)</span>
+          <span className="label">Imagen de la respuesta (opcional)</span>
           <div
             className={`ed-drop ${dragging ? 'ed-drop--over' : ''}`}
             onDragOver={(e) => {
@@ -268,14 +268,7 @@ export function CardForm({ deck, editing, onDone }: { deck: DeckRow; editing?: C
           band={<span>Pregunta</span>}
           art={
             <div className="ed-preview__art" style={{ background: art.background }}>
-              {chosenUrl ? (
-                <div className="hint-art">
-                  <span className="hint-art__chip chrome">Pista visual</span>
-                  <img src={chosenUrl} alt="Pista visual" style={{ maxWidth: '70%', maxHeight: '70%' }} />
-                </div>
-              ) : (
-                <HintArt imageId={storedId} fallbackGlyph={art.glyph} />
-              )}
+              <HintArt fallbackGlyph={art.glyph} />
             </div>
           }
         >

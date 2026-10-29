@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Review from '../Review'
@@ -67,6 +67,21 @@ describe('Review', () => {
     expect(screen.getByText('Como un onigiri cada mañana.')).toBeInTheDocument()
     // Four grade buttons with interval previews.
     expect(screen.getByRole('button', { name: /^Otra vez/ })).toHaveTextContent(/min/)
+  })
+
+  it('keeps the image off the question side and shows it with the answer', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:hint')
+    URL.revokeObjectURL = vi.fn()
+    db = freshDb()
+    await seed(db, [deck('d')], [card('d', 'a', { question: 'おにぎり', imageId: 'd::onigiri.webp', srs: dueSrs() })])
+    await db.media.put({ id: 'd::onigiri.webp', deckId: 'd', name: 'onigiri.webp', type: 'image/webp', data: new ArrayBuffer(3) })
+    renderWith(db, <Review />)
+    await screen.findByRole('button', { name: 'Girar carta' })
+    // Give the image a chance to load: it must still not be on the front.
+    await new Promise((r) => setTimeout(r, 50))
+    expect(screen.queryByRole('img', { name: 'Pista visual' })).toBeNull()
+    await flip()
+    expect(await screen.findByRole('img', { name: 'Pista visual' })).toBeInTheDocument()
   })
 
   it('asks "¿Qué significa?" for a bare word', async () => {

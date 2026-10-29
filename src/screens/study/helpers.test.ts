@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { estimateMinutes, levelFromReviews, requeueIndex, sharePercents, plural } from './helpers'
+import { answerSize, estimateMinutes, levelFromReviews, requeueIndex, sharePercents, plural } from './helpers'
 
 describe('estimateMinutes', () => {
   it('assumes about 10 s per card and never shows 0 for pending work', () => {
@@ -49,5 +49,19 @@ describe('plural', () => {
     expect(plural(1, 'mazo', 'mazos')).toBe('1 mazo')
     expect(plural(3, 'mazo', 'mazos')).toBe('3 mazos')
     expect(plural(0, 'carta', 'cartas')).toBe('0 cartas')
+  })
+})
+
+describe('answerSize', () => {
+  it('fits the answer and the speaker button on one line of a 300 px card', () => {
+    // The answer row is 254 px wide; the speaker button and gap take 54 px.
+    for (const word of ['猫', '食べる', 'おにぎり', 'たべもの', '図書館で']) {
+      expect(word.length * answerSize(word)).toBeLessThanOrEqual(200)
+    }
+  })
+
+  it('keeps short answers big', () => {
+    expect(answerSize('猫')).toBe(54)
+    expect(answerSize('食べる')).toBe(54)
   })
 })

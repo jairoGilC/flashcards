@@ -1,7 +1,7 @@
 import { parseQuestion } from '../../core/question'
 import type { CardRow, DeckRow } from '../../db/db'
 import { Filigree, HintArt, Icon, IconButton, MiniDiamond, QuestionText, TcgCard, deckArt } from '../../ui'
-import { ratingColor } from './helpers'
+import { answerSize, ratingColor } from './helpers'
 
 // Shrinks the card on short screens so the grade buttons stay above the fold.
 const CARD_WIDTH = 'min(300px, 100%, calc((100dvh - 300px) * 0.714))'
@@ -24,7 +24,8 @@ export function FrontFace({ card, deck }: { card: CardRow; deck: DeckRow }) {
     <Filigree>
       <TcgCard
         width={CARD_WIDTH}
-        art={<HintArt imageId={card.imageId} fallbackGlyph={deckArt(deck).glyph} />}
+        // The image lives on the answer side only: on the front it would give the meaning away.
+        art={<HintArt fallbackGlyph={deckArt(deck).glyph} />}
         band={<DeckBand label="Pregunta" deck={deck} />}
       >
         <QuestionText question={card.question} className="face-question" />
@@ -48,21 +49,15 @@ function speak(text: string) {
   speechSynthesis.speak(u)
 }
 
-function answerSize(text: string): number {
-  if (text.length <= 4) return 54
-  if (text.length <= 7) return 40
-  return 30
-}
-
 export function BackFace({ card, deck }: { card: CardRow; deck: DeckRow }) {
   return (
     <TcgCard
       width={CARD_WIDTH}
       glow="gold"
-      artHeight="27%"
+      artHeight={card.imageId ? '36%' : '27%'}
       className="flip-in"
       art={
-        <div className="answer-art">
+        <div className={card.imageId ? 'answer-art answer-art--image' : 'answer-art'}>
           <div className="answer-art__img">
             <HintArt imageId={card.imageId} fallbackGlyph={deckArt(deck).glyph} size="100%" />
           </div>

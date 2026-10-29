@@ -458,6 +458,10 @@
   height: 72px;
   flex-shrink: 0;
 }
+.answer-art--image .answer-art__img {
+  width: 130px;
+  height: 130px;
+}
 .answer-art__img .hint-art__glyph {
   font-size: 44px;
 }

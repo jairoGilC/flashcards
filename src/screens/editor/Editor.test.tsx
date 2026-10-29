@@ -239,6 +239,8 @@ describe('Editor · card form', () => {
     const file = new File(['PNG'], 'onigiri.png', { type: 'image/png' })
     await u.upload(screen.getByLabelText(/elige una imagen/i), file)
     expect(await screen.findByRole('img', { name: 'Imagen elegida' })).toBeInTheDocument()
+    // The preview is the question side, which never shows the image.
+    expect(within(screen.getByRole('region', { name: 'Vista previa' })).queryByRole('img')).toBeNull()
 
     await u.click(screen.getByRole('button', { name: 'Quitar imagen' }))
     expect(screen.queryByRole('img', { name: 'Imagen elegida' })).toBeNull()

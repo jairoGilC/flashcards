@@ -40,3 +40,10 @@ export function plural(n: number, one: string, many: string): string {
 export function ratingColor(rating: 'green' | 'red'): string {
   return rating === 'red' ? 'var(--ruby)' : '#3fbf66'
 }
+
+/** Font size (px) for the answer word, so up to 5 characters share one line with the speaker button. */
+export function answerSize(text: string): number {
+  if (text.length <= 3) return 54
+  if (text.length <= 5) return 40
+  return 30
+}
