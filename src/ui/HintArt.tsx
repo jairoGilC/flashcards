@@ -4,7 +4,10 @@ import { useApp } from '../app/AppContext'
 import { Sparkle } from './index'
 
 /** The card's art window content: the hint image if the card has one, otherwise the deck glyph. */
-/** `fill` scales the image to the whole window instead of capping it at `size`; `onRatio` reports width / height once loaded. */
+/**
+ * `fill` scales the image to the whole window instead of capping it at `size`; `onRatio` reports width / height
+ * once loaded, and `onFail` fires when the media row is missing or the image can't be decoded.
+ */
 export function HintArt({
   imageId,
   fallbackGlyph,
@@ -12,6 +15,7 @@ export function HintArt({
   size = '70%',
   fill = false,
   onRatio,
+  onFail,
 }: {
   imageId?: string
   fallbackGlyph: string
@@ -19,10 +23,16 @@ export function HintArt({
   size?: string
   fill?: boolean
   onRatio?: (ratio: number) => void
+  onFail?: () => void
 }) {
   const { db } = useApp()
-  const media = useLiveQuery(() => (imageId ? db.media.get(imageId) : undefined), [db, imageId])
+  // null = no such media row (undefined while the query is still loading).
+  const media = useLiveQuery(async () => (imageId ? ((await db.media.get(imageId)) ?? null) : undefined), [db, imageId])
   const [url, setUrl] = useState<string>()
+
+  useEffect(() => {
+    if (media === null) onFail?.()
+  }, [media, onFail])
 
   useEffect(() => {
     if (!media) {
@@ -48,6 +58,7 @@ export function HintArt({
                 const { naturalWidth: w, naturalHeight: h } = e.currentTarget
                 if (w && h) onRatio?.(w / h)
               }}
+              onError={onFail}
             />
           ) : (
             <img src={url} alt={label} style={{ maxWidth: size, maxHeight: size }} />

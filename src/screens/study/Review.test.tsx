@@ -91,8 +91,8 @@ describe('Review', () => {
     expect(screen.queryByRole('img', { name: 'Pista visual' })).toBeNull()
     await flip()
     expect(await screen.findByRole('img', { name: 'Pista visual' })).toBeInTheDocument()
-    // Only the answer side ever loaded the image: once for the frame, once for its blurred backdrop.
-    expect(createUrl).toHaveBeenCalledTimes(2)
+    // Only the answer side ever loaded the image.
+    expect(createUrl).toHaveBeenCalledTimes(1)
     // The art window holds just the image; the sentence sits in the text box below.
     const art = document.querySelector('.tcg-card__art')
     expect(art).not.toBeNull()
@@ -100,14 +100,41 @@ describe('Review', () => {
     expect(document.querySelector('.study-card')).toHaveClass('study-card--image')
     const img = screen.getByRole('img', { name: 'Pista visual' })
     expect(img).toHaveClass('hint-art__img--fill')
+    // The blurred backdrop only appears once the frame is sized (and only for frames narrower than the card).
+    expect(document.querySelector('.answer-backdrop')).toBeNull()
     Object.defineProperty(img, 'naturalWidth', { value: 800 })
     Object.defineProperty(img, 'naturalHeight', { value: 600 })
     fireEvent.load(img)
     await waitFor(() => expect(document.querySelector('.answer-frame')).toHaveAttribute('data-ratio', '1.333'))
-    // Behind the frame, a blurred copy of the image fills any side strips (decorative, hidden from screen readers).
-    expect(document.querySelector('.answer-backdrop img')).toHaveAttribute('alt', '')
     expect(art).not.toHaveTextContent('おにぎり')
     expect(document.querySelector('.tcg-card__body')).toHaveTextContent('おにぎり')
+  })
+
+  it('falls back to a text-only answer when the image is missing or cannot be decoded', async () => {
+    URL.createObjectURL = () => ''
+    URL.revokeObjectURL = () => {}
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:broken')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    db = freshDb()
+    await seed(db, [deck('d')], [
+      // Points at a media row that was never imported.
+      card('d', 'a', { order: 0, question: '[猫]がいる。', answer: '猫', imageId: 'd::missing.webp', srs: dueSrs() }),
+      card('d', 'b', { order: 1, question: '[犬]がいる。', answer: '犬', imageId: 'd::bad.webp', srs: dueSrs() }),
+    ])
+    await db.media.put({ id: 'd::bad.webp', deckId: 'd', name: 'bad.webp', type: 'image/webp', data: new ArrayBuffer(3) })
+    renderWith(db, <Review deckId="d" />)
+    for (let i = 0; i < 2; i++) {
+      await screen.findByRole('button', { name: 'Girar carta' })
+      await flip()
+      // The missing row fails on its own; the undecodable image fails once its <img> renders and errors.
+      await waitFor(() => {
+        const broken = screen.queryByRole('img', { name: 'Pista visual' })
+        if (broken) fireEvent.error(broken)
+        expect(document.querySelector('.tcg-card__art')).toBeNull()
+      })
+      await grade(/^Bien/)
+      await waitFor(() => expect(screen.queryByText('¡Repaso completado!') ?? screen.getByRole('button', { name: 'Girar carta' })).toBeInTheDocument())
+    }
   })
 
   it('has no art window on the question side, nor on an answer without an image', async () => {

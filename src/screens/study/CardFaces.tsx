@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { parseQuestion } from '../../core/question'
 import type { CardRow, DeckRow } from '../../db/db'
 import { HintArt, Icon, IconButton, MiniDiamond, QuestionText, TcgCard, deckArt } from '../../ui'
@@ -21,7 +21,7 @@ const MIN_ART_SHARE = 0.28
  * whenever the card resizes. Undefined until the image has loaded and the card has been laid out.
  */
 function useImageFrame(slotRef: RefObject<HTMLDivElement>, ratio: number | undefined) {
-  const [frame, setFrame] = useState<{ width: number; height: number }>()
+  const [frame, setFrame] = useState<{ width: number; height: number; narrow: boolean }>()
   useLayoutEffect(() => {
     const slot = slotRef.current
     if (!slot || !ratio) return
@@ -33,21 +33,34 @@ function useImageFrame(slotRef: RefObject<HTMLDivElement>, ratio: number | undef
       const cardStyle = getComputedStyle(card)
       const bodyStyle = getComputedStyle(body)
       const cardPad = parseFloat(cardStyle.paddingTop) + parseFloat(cardStyle.paddingBottom)
+      // Layout offsets, not getBoundingClientRect: the back face measures while its flip-in animation (a 3D
+      // transform) may still be running, and transformed boxes would read too tall.
+      const first = body.firstElementChild as HTMLElement
+      const last = body.lastElementChild as HTMLElement
       const textHeight =
-        body.lastElementChild.getBoundingClientRect().bottom -
-        body.firstElementChild.getBoundingClientRect().top +
+        last.offsetTop + last.offsetHeight - first.offsetTop +
         parseFloat(bodyStyle.paddingTop) +
         parseFloat(bodyStyle.paddingBottom)
       const inner = card.clientHeight - cardPad
       const room = Math.max(inner * MIN_ART_SHARE, inner - band.offsetHeight - textHeight)
       const width = card.clientWidth - parseFloat(cardStyle.paddingLeft) - parseFloat(cardStyle.paddingRight)
-      setFrame(fitFrame(ratio, width, room))
+      const fit = fitFrame(ratio, width, room)
+      setFrame({ ...fit, narrow: fit.width < width - 1 })
     }
     measure()
-    if (typeof ResizeObserver === 'undefined') return
+    let live = true
+    // Web fonts change the text's height when they swap in.
+    void document.fonts?.ready.then(() => live && measure())
+    if (typeof ResizeObserver === 'undefined') return () => void (live = false)
     const observer = new ResizeObserver(measure)
     observer.observe(slot)
-    return () => observer.disconnect()
+    // The text box's first and last children size with the text, not with the art window, so this can't loop.
+    const body = slot.querySelector('.tcg-card__body')
+    for (const child of [body?.firstElementChild, body?.lastElementChild]) if (child) observer.observe(child)
+    return () => {
+      live = false
+      observer.disconnect()
+    }
   }, [slotRef, ratio])
   return frame
 }
@@ -94,28 +107,35 @@ function speak(text: string) {
 export function BackFace({ card, deck }: { card: CardRow; deck: DeckRow }) {
   const slotRef = useRef<HTMLDivElement>(null)
   const [ratio, setRatio] = useState<number>()
-  const frame = useImageFrame(slotRef, card.imageId ? ratio : undefined)
+  // A missing or undecodable image leaves a text-only answer rather than an empty frame.
+  const [failed, setFailed] = useState(false)
+  const onFail = useCallback(() => setFailed(true), [])
+  const hasImage = !!card.imageId && !failed
+  const frame = useImageFrame(slotRef, hasImage ? ratio : undefined)
   return (
     <CardSlot slotRef={slotRef}>
       <TcgCard
         width="100%"
         glow="gold"
-        className={`flip-in study-card ${card.imageId ? 'study-card--image' : ''}`}
+        className={`flip-in study-card ${hasImage ? 'study-card--image' : ''}`}
         // The art window is exactly as tall as the image frame; the text box below gets the rest.
         artHeight={frame ? frame.height : undefined}
         // Only the image goes in the art window; without one the card is text only.
         art={
-          card.imageId ? (
+          hasImage ? (
             <>
-              <div className="answer-backdrop" aria-hidden="true">
-                <HintArt imageId={card.imageId} fallbackGlyph="" label="" fill />
-              </div>
+              {/* Fills the side strips of a portrait frame; not needed when the frame spans the card. */}
+              {frame?.narrow && (
+                <div className="answer-backdrop" aria-hidden="true">
+                  <HintArt imageId={card.imageId} fallbackGlyph="" label="" fill />
+                </div>
+              )}
             <div
               className={`answer-frame ${frame ? 'answer-frame--sized' : ''}`}
               data-ratio={ratio?.toFixed(3)}
               style={frame ? { width: frame.width, height: frame.height } : undefined}
             >
-              <HintArt imageId={card.imageId} fallbackGlyph={deckArt(deck).glyph} fill onRatio={setRatio} />
+              <HintArt imageId={card.imageId} fallbackGlyph={deckArt(deck).glyph} fill onRatio={setRatio} onFail={onFail} />
             </div>
             </>
           ) : undefined
