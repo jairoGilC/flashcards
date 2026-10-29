@@ -188,19 +188,6 @@ export function TcgCard({
   )
 }
 
-/** Gold L-brackets framing a region, as in FiligreeFrame.swift. */
-export function Filigree({ children }: { children: ReactNode }) {
-  return (
-    <div className="filigree">
-      <span aria-hidden="true" className="filigree__c filigree__c--tl" />
-      <span aria-hidden="true" className="filigree__c filigree__c--tr" />
-      <span aria-hidden="true" className="filigree__c filigree__c--bl" />
-      <span aria-hidden="true" className="filigree__c filigree__c--br" />
-      {children}
-    </div>
-  )
-}
-
 // ---------- Deck art ----------
 
 const PALETTES = [

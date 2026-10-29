@@ -83,7 +83,9 @@ export function BackFace({ card, deck }: { card: CardRow; deck: DeckRow }) {
           </span>
         )}
         {card.meaning && <span className="answer-meaning">{card.meaning}</span>}
-        {parseQuestion(card.question).isSentence && <QuestionText question={card.question} className="answer-sentence" />}
+        {(parseQuestion(card.question).isSentence || card.question.trim() !== card.answer.trim()) && (
+          <QuestionText question={card.question} className="answer-sentence" />
+        )}
         {card.translation && <span className="answer-translation">{card.translation}</span>}
       </TcgCard>
     </CardSlot>

@@ -27,6 +27,7 @@ describe('Review', () => {
     renderWith(db, <Review />)
 
     expect(await screen.findByText('1 / 2')).toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveClass('review--card')
     expect(screen.getByText('Repaso diario · mixto')).toBeInTheDocument()
     await flip()
     const first = screen.getByTestId('answer').textContent!
@@ -47,6 +48,8 @@ describe('Review', () => {
     await grade(/^Fácil/)
 
     expect(await screen.findByText('¡Repaso completado!')).toBeInTheDocument()
+    // The one-viewport-tall card layout is only for cards; the summary can grow and scroll.
+    expect(screen.getByRole('main')).not.toHaveClass('review--card')
     expect(screen.getByText('Bien').closest('li')).toHaveTextContent('1')
     expect(screen.getByText('Fácil').closest('li')).toHaveTextContent('1')
     expect(screen.getByRole('link', { name: /Volver a mis mazos/ })).toHaveAttribute('href', '#/')
@@ -90,7 +93,8 @@ describe('Review', () => {
     // Only the answer side ever loaded the image.
     expect(createUrl).toHaveBeenCalledTimes(1)
     // The art window holds just the image; the sentence sits in the text box below.
-    const art = document.querySelector('.tcg-card__art')!
+    const art = document.querySelector('.tcg-card__art')
+    expect(art).not.toBeNull()
     expect(art).not.toHaveTextContent('おにぎり')
     expect(document.querySelector('.tcg-card__body')).toHaveTextContent('おにぎり')
   })
@@ -105,6 +109,25 @@ describe('Review', () => {
     expect(document.querySelector('.tcg-card__art')).toBeNull()
     // The sentence moves into the answer's text box, next to its translation.
     expect(document.querySelector('.tcg-card__body u')).toHaveTextContent('食べます')
+  })
+
+  it('repeats a bare-word question on the answer side only when it differs from the answer', async () => {
+    db = freshDb()
+    await seed(db, [deck('d')], [
+      card('d', 'a', { order: 0, question: 'たべる', answer: '食べる', srs: dueSrs() }),
+      card('d', 'b', { order: 1, question: '猫', answer: '猫', srs: dueSrs() }),
+    ])
+    renderWith(db, <Review deckId="d" />)
+    for (let i = 0; i < 2; i++) {
+      await screen.findByRole('button', { name: 'Girar carta' })
+      await flip()
+      const body = document.querySelector('.tcg-card__body')!
+      const answer = screen.getByTestId('answer').textContent
+      if (answer === '食べる') expect(body).toHaveTextContent('たべる')
+      else expect(body.textContent!.split('猫')).toHaveLength(2)
+      await grade(/^Bien/)
+      await waitFor(() => expect(screen.queryByText('¡Repaso completado!') ?? screen.getByRole('button', { name: 'Girar carta' })).toBeInTheDocument())
+    }
   })
 
   it('asks "¿Qué significa?" for a bare word', async () => {

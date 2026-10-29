@@ -74,7 +74,8 @@ describe('answerSize', () => {
 describe('answerFont', () => {
   it('is answerSize on a 300 px card and scales with the card in both directions', () => {
     // A 300 px card has a 286 px content box, so 1cqw = 2.86 px there.
-    expect(answerFont('おにぎり')).toBe('13.99cqw')
-    expect(answerFont('猫')).toBe('18.88cqw')
+    // Capped at 1.5× so a tablet- or desktop-sized card doesn't get poster-sized text.
+    expect(answerFont('おにぎり')).toBe('min(60px, 13.99cqw)')
+    expect(answerFont('猫')).toBe('min(81px, 18.88cqw)')
   })
 })

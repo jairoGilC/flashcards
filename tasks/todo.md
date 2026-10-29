@@ -30,7 +30,7 @@ Mockup: https://claude.ai/artifact/NCEH53RDCeWdoYL2er5CZo
 - **Question** = a word, or a sentence with one word marked: `毎朝おにぎりを[食べます]。` → the bracketed part renders underlined.
 - **Answer** = the word: `answer` (dictionary form, 食べる), `reading` (たべる), `meaning` (comer), optional `translation` of the sentence.
 - **Layout (study):** the card fills the screen on both sides. Question side = text only (no art window). Answer side = image alone in the art window (no art window without an image); the sentence sits in the text box between the meaning and its translation.
-- **Image** = optional memory hook shown **only on the answer side**. On the question side the art window shows the deck glyph, because a picture there would give the meaning away and you'd learn the picture instead of the word (decided 2026-10-28).
+- **Image** = optional memory hook shown **only on the answer side**. The question side has no art window at all, because a picture there would give the meaning away and you'd learn the picture instead of the word (decided 2026-10-28).
 - Audio: Web Speech API with `ja-JP` voice reads the answer.
 
 ## Daily session (mixed)
