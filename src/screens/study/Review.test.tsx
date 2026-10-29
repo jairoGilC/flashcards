@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Review from '../Review'
 import type { KotobaDB } from '../../db/db'
@@ -91,15 +91,21 @@ describe('Review', () => {
     expect(screen.queryByRole('img', { name: 'Pista visual' })).toBeNull()
     await flip()
     expect(await screen.findByRole('img', { name: 'Pista visual' })).toBeInTheDocument()
-    // Only the answer side ever loaded the image.
-    expect(createUrl).toHaveBeenCalledTimes(1)
+    // Only the answer side ever loaded the image: once for the frame, once for its blurred backdrop.
+    expect(createUrl).toHaveBeenCalledTimes(2)
     // The art window holds just the image; the sentence sits in the text box below.
     const art = document.querySelector('.tcg-card__art')
     expect(art).not.toBeNull()
-    // The art window takes the space the text doesn't need, and the image fills it (scaled, never cropped).
+    // The frame takes the image's own proportions once it has loaded, so the image fills it exactly.
     expect(document.querySelector('.study-card')).toHaveClass('study-card--image')
-    expect(art!.getAttribute('style') ?? '').not.toMatch(/height/)
-    expect(screen.getByRole('img', { name: 'Pista visual' })).toHaveClass('hint-art__img--fill')
+    const img = screen.getByRole('img', { name: 'Pista visual' })
+    expect(img).toHaveClass('hint-art__img--fill')
+    Object.defineProperty(img, 'naturalWidth', { value: 800 })
+    Object.defineProperty(img, 'naturalHeight', { value: 600 })
+    fireEvent.load(img)
+    await waitFor(() => expect(document.querySelector('.answer-frame')).toHaveAttribute('data-ratio', '1.333'))
+    // Behind the frame, a blurred copy of the image fills any side strips (decorative, hidden from screen readers).
+    expect(document.querySelector('.answer-backdrop img')).toHaveAttribute('alt', '')
     expect(art).not.toHaveTextContent('おにぎり')
     expect(document.querySelector('.tcg-card__body')).toHaveTextContent('おにぎり')
   })

@@ -55,3 +55,11 @@ export function answerFont(text: string): string {
   // A 300 px card's content box is 286 px wide (7 px padding each side); cap at 1.5× for tablet-sized cards.
   return `min(${px * 1.5}px, ${+(px / 2.86).toFixed(2)}cqw)`
 }
+
+/** Largest box with aspect ratio `ratio` (width / height) inside maxW × maxH, in whole pixels rounded down. */
+export function fitFrame(ratio: number, maxW: number, maxH: number): { width: number; height: number } {
+  const w = Math.max(0, maxW)
+  const h = Math.max(0, maxH)
+  const byWidth = w / ratio
+  return byWidth <= h ? { width: Math.floor(w), height: Math.floor(byWidth) } : { width: Math.floor(h * ratio), height: Math.floor(h) }
+}

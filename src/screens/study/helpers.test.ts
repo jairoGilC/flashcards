@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { answerFont, answerSize, estimateMinutes, levelFromReviews, requeueIndex, sharePercents, plural } from './helpers'
+import { answerFont, answerSize, estimateMinutes, fitFrame, levelFromReviews, requeueIndex, sharePercents, plural } from './helpers'
 
 describe('estimateMinutes', () => {
   it('assumes about 10 s per card and never shows 0 for pending work', () => {
@@ -77,5 +77,24 @@ describe('answerFont', () => {
     // Capped at 1.5× so a tablet- or desktop-sized card doesn't get poster-sized text.
     expect(answerFont('おにぎり')).toBe('min(60px, 13.99cqw)')
     expect(answerFont('猫')).toBe('min(81px, 18.88cqw)')
+  })
+})
+
+describe('fitFrame', () => {
+  it('uses the full width for a landscape image when there is height to spare', () => {
+    expect(fitFrame(4 / 3, 344, 400)).toEqual({ width: 344, height: 258 })
+  })
+
+  it('narrows the frame for a portrait image that would be too tall', () => {
+    expect(fitFrame(3 / 4, 344, 360)).toEqual({ width: 270, height: 360 })
+  })
+
+  it('limits by height for a wide image in a short space', () => {
+    expect(fitFrame(16 / 9, 344, 150)).toEqual({ width: 266, height: 150 })
+  })
+
+  it('never returns negative sizes and rounds down so the frame never overflows', () => {
+    expect(fitFrame(1, 300, -20)).toEqual({ width: 0, height: 0 })
+    expect(fitFrame(1.5, 100.6, 500)).toEqual({ width: 100, height: 67 })
   })
 })

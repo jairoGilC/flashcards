@@ -4,19 +4,21 @@ import { useApp } from '../app/AppContext'
 import { Sparkle } from './index'
 
 /** The card's art window content: the hint image if the card has one, otherwise the deck glyph. */
-/** `fill` scales the image to the whole window (contain: never cropped) instead of capping it at `size`. */
+/** `fill` scales the image to the whole window instead of capping it at `size`; `onRatio` reports width / height once loaded. */
 export function HintArt({
   imageId,
   fallbackGlyph,
   label = 'Pista visual',
   size = '70%',
   fill = false,
+  onRatio,
 }: {
   imageId?: string
   fallbackGlyph: string
   label?: string
   size?: string
   fill?: boolean
+  onRatio?: (ratio: number) => void
 }) {
   const { db } = useApp()
   const media = useLiveQuery(() => (imageId ? db.media.get(imageId) : undefined), [db, imageId])
@@ -38,7 +40,15 @@ export function HintArt({
         <>
           <span className="hint-art__chip chrome">{label}</span>
           {fill ? (
-            <img src={url} alt={label} className="hint-art__img--fill" />
+            <img
+              src={url}
+              alt={label}
+              className="hint-art__img--fill"
+              onLoad={(e) => {
+                const { naturalWidth: w, naturalHeight: h } = e.currentTarget
+                if (w && h) onRatio?.(w / h)
+              }}
+            />
           ) : (
             <img src={url} alt={label} style={{ maxWidth: size, maxHeight: size }} />
           )}

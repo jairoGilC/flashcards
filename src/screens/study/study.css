@@ -677,16 +677,42 @@
   display: none;
 }
 
-/* With an image, the text box takes only the height its content needs and the art window gets the
-   rest, so cards with little text get a bigger image. A floor keeps some image on text-heavy cards. */
+/* With an image, the art window is sized in JS to the image's own proportions (useImageFrame) and the
+   text box takes the rest. Until then it holds 40% of the card with the frame hidden. */
 .study-card--image .tcg-card__art {
-  flex: 1 1 0;
-  min-height: 28%;
+  height: 40%;
+  background: none;
+  display: flex;
+  justify-content: center;
 }
-.study-card--image .tcg-card__body {
-  flex: 0 1 auto;
+.answer-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px 10px 0 0;
+  overflow: hidden;
+  visibility: hidden;
 }
-/* A little inset so the image doesn't touch the gold frame. */
-.study-card--image .hint-art {
-  inset: 6px;
+.answer-frame--sized {
+  visibility: visible;
+}
+.answer-frame .hint-art img.hint-art__img--fill {
+  /* The frame already has the image's proportions, so cover fills it without cropping. */
+  object-fit: cover;
+  filter: none;
+}
+.answer-frame .hint-art__spark,
+.answer-backdrop .hint-art__spark {
+  display: none;
+}
+/* A blurred, enlarged copy of the image behind the frame fills the side strips of portrait images. */
+.answer-backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.answer-backdrop .hint-art img.hint-art__img--fill {
+  object-fit: cover;
+  filter: blur(18px) brightness(0.7);
+  transform: scale(1.25);
 }

@@ -1,12 +1,55 @@
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { parseQuestion } from '../../core/question'
 import type { CardRow, DeckRow } from '../../db/db'
 import { HintArt, Icon, IconButton, MiniDiamond, QuestionText, TcgCard, deckArt } from '../../ui'
-import { answerFont, ratingColor } from './helpers'
+import { answerFont, fitFrame, ratingColor } from './helpers'
 
 // Sizes the card to fill the stage (see .study-slot); the card itself is a container for its text's cqw sizes.
-function CardSlot({ children }: { children: ReactNode }) {
-  return <div className="study-slot">{children}</div>
+function CardSlot({ children, slotRef }: { children: ReactNode; slotRef?: RefObject<HTMLDivElement> }) {
+  return (
+    <div className="study-slot" ref={slotRef}>
+      {children}
+    </div>
+  )
+}
+
+/** Smallest share of the card the image keeps when the text needs a lot of room (the text then scrolls). */
+const MIN_ART_SHARE = 0.28
+
+/**
+ * Size of the image frame: the image's own proportions, as large as fits above the text. Re-measured
+ * whenever the card resizes. Undefined until the image has loaded and the card has been laid out.
+ */
+function useImageFrame(slotRef: RefObject<HTMLDivElement>, ratio: number | undefined) {
+  const [frame, setFrame] = useState<{ width: number; height: number }>()
+  useLayoutEffect(() => {
+    const slot = slotRef.current
+    if (!slot || !ratio) return
+    const measure = () => {
+      const card = slot.querySelector<HTMLElement>('.study-card')
+      const band = card?.querySelector<HTMLElement>('.tcg-card__band')
+      const body = card?.querySelector<HTMLElement>('.tcg-card__body')
+      if (!card || !band || !body || !body.firstElementChild || !body.lastElementChild) return
+      const cardStyle = getComputedStyle(card)
+      const bodyStyle = getComputedStyle(body)
+      const cardPad = parseFloat(cardStyle.paddingTop) + parseFloat(cardStyle.paddingBottom)
+      const textHeight =
+        body.lastElementChild.getBoundingClientRect().bottom -
+        body.firstElementChild.getBoundingClientRect().top +
+        parseFloat(bodyStyle.paddingTop) +
+        parseFloat(bodyStyle.paddingBottom)
+      const inner = card.clientHeight - cardPad
+      const room = Math.max(inner * MIN_ART_SHARE, inner - band.offsetHeight - textHeight)
+      const width = card.clientWidth - parseFloat(cardStyle.paddingLeft) - parseFloat(cardStyle.paddingRight)
+      setFrame(fitFrame(ratio, width, room))
+    }
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(slot)
+    return () => observer.disconnect()
+  }, [slotRef, ratio])
+  return frame
 }
 
 function DeckBand({ label, deck }: { label: string; deck: DeckRow }) {
@@ -49,14 +92,34 @@ function speak(text: string) {
 }
 
 export function BackFace({ card, deck }: { card: CardRow; deck: DeckRow }) {
+  const slotRef = useRef<HTMLDivElement>(null)
+  const [ratio, setRatio] = useState<number>()
+  const frame = useImageFrame(slotRef, card.imageId ? ratio : undefined)
   return (
-    <CardSlot>
+    <CardSlot slotRef={slotRef}>
       <TcgCard
         width="100%"
         glow="gold"
         className={`flip-in study-card ${card.imageId ? 'study-card--image' : ''}`}
+        // The art window is exactly as tall as the image frame; the text box below gets the rest.
+        artHeight={frame ? frame.height : undefined}
         // Only the image goes in the art window; without one the card is text only.
-        art={card.imageId ? <HintArt imageId={card.imageId} fallbackGlyph={deckArt(deck).glyph} fill /> : undefined}
+        art={
+          card.imageId ? (
+            <>
+              <div className="answer-backdrop" aria-hidden="true">
+                <HintArt imageId={card.imageId} fallbackGlyph="" label="" fill />
+              </div>
+            <div
+              className={`answer-frame ${frame ? 'answer-frame--sized' : ''}`}
+              data-ratio={ratio?.toFixed(3)}
+              style={frame ? { width: frame.width, height: frame.height } : undefined}
+            >
+              <HintArt imageId={card.imageId} fallbackGlyph={deckArt(deck).glyph} fill onRatio={setRatio} />
+            </div>
+            </>
+          ) : undefined
+        }
         band={<DeckBand label="Respuesta" deck={deck} />}
       >
         <div className="answer-row">
