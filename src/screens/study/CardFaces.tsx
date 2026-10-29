@@ -1,7 +1,7 @@
 import { parseQuestion } from '../../core/question'
 import type { CardRow, DeckRow } from '../../db/db'
 import { Filigree, HintArt, Icon, IconButton, MiniDiamond, QuestionText, TcgCard, deckArt } from '../../ui'
-import { answerSize, ratingColor } from './helpers'
+import { answerFont, ratingColor } from './helpers'
 
 // Shrinks the card on short screens so the grade buttons stay above the fold.
 const CARD_WIDTH = 'min(300px, 100%, calc((100dvh - 300px) * 0.714))'
@@ -55,7 +55,7 @@ export function BackFace({ card, deck }: { card: CardRow; deck: DeckRow }) {
       width={CARD_WIDTH}
       glow="gold"
       artHeight={card.imageId ? '36%' : '27%'}
-      className="flip-in"
+      className="flip-in face-back"
       art={
         <div className={card.imageId ? 'answer-art answer-art--image' : 'answer-art'}>
           <div className="answer-art__img">
@@ -67,7 +67,7 @@ export function BackFace({ card, deck }: { card: CardRow; deck: DeckRow }) {
       band={<DeckBand label="Respuesta" deck={deck} />}
     >
       <div className="answer-row">
-        <span className="mincho answer-word" lang="ja" data-testid="answer" style={{ fontSize: answerSize(card.answer) }}>
+        <span className="mincho answer-word" lang="ja" data-testid="answer" style={{ fontSize: answerFont(card.answer) }}>
           {card.answer}
         </span>
         {canSpeak() && (

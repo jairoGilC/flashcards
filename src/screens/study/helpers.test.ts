@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { answerSize, estimateMinutes, levelFromReviews, requeueIndex, sharePercents, plural } from './helpers'
+import { answerFont, answerSize, estimateMinutes, levelFromReviews, requeueIndex, sharePercents, plural } from './helpers'
 
 describe('estimateMinutes', () => {
   it('assumes about 10 s per card and never shows 0 for pending work', () => {
@@ -60,8 +60,21 @@ describe('answerSize', () => {
     }
   })
 
+  it('counts characters, not UTF-16 units, for rare kanji', () => {
+    // 3 characters, 5 UTF-16 units.
+    expect(answerSize('𠮟𠮟る')).toBe(54)
+  })
+
   it('keeps short answers big', () => {
     expect(answerSize('猫')).toBe(54)
     expect(answerSize('食べる')).toBe(54)
+  })
+})
+
+describe('answerFont', () => {
+  it('uses the full size on a 300 px card and shrinks with smaller cards', () => {
+    // About full size on a 300 px card (1cqw ≈ 3 px), smaller on shrunk cards.
+    expect(answerFont('おにぎり')).toBe('min(40px, 13.33cqw)')
+    expect(answerFont('猫')).toBe('min(54px, 18cqw)')
   })
 })

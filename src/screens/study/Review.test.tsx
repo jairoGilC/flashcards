@@ -11,6 +11,7 @@ let db: KotobaDB
 afterEach(() => {
   cleanup()
   db?.close()
+  vi.restoreAllMocks()
 })
 
 const flip = () => userEvent.click(screen.getByRole('button', { name: 'Girar carta' }))
@@ -70,18 +71,21 @@ describe('Review', () => {
   })
 
   it('keeps the image off the question side and shows it with the answer', async () => {
-    URL.createObjectURL = vi.fn(() => 'blob:hint')
-    URL.revokeObjectURL = vi.fn()
+    // jsdom has no object URLs; stub them for the image on the answer side.
+    URL.createObjectURL = () => ''
+    URL.revokeObjectURL = () => {}
+    const createUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:hint')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
     db = freshDb()
     await seed(db, [deck('d')], [card('d', 'a', { question: 'おにぎり', imageId: 'd::onigiri.webp', srs: dueSrs() })])
     await db.media.put({ id: 'd::onigiri.webp', deckId: 'd', name: 'onigiri.webp', type: 'image/webp', data: new ArrayBuffer(3) })
     renderWith(db, <Review />)
     await screen.findByRole('button', { name: 'Girar carta' })
-    // Give the image a chance to load: it must still not be on the front.
-    await new Promise((r) => setTimeout(r, 50))
     expect(screen.queryByRole('img', { name: 'Pista visual' })).toBeNull()
     await flip()
     expect(await screen.findByRole('img', { name: 'Pista visual' })).toBeInTheDocument()
+    // Only the answer side ever loaded the image.
+    expect(createUrl).toHaveBeenCalledTimes(1)
   })
 
   it('asks "¿Qué significa?" for a bare word', async () => {

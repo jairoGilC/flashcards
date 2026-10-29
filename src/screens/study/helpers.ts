@@ -43,7 +43,14 @@ export function ratingColor(rating: 'green' | 'red'): string {
 
 /** Font size (px) for the answer word, so up to 5 characters share one line with the speaker button. */
 export function answerSize(text: string): number {
-  if (text.length <= 3) return 54
-  if (text.length <= 5) return 40
+  const chars = [...text].length
+  if (chars <= 3) return 54
+  if (chars <= 5) return 40
   return 30
+}
+
+/** CSS font size for the answer: answerSize on a 300 px card, scaled down with the card (which is a size container). */
+export function answerFont(text: string): string {
+  const px = answerSize(text)
+  return `min(${px}px, ${+(px / 3).toFixed(2)}cqw)`
 }

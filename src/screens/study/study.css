@@ -458,9 +458,13 @@
   height: 72px;
   flex-shrink: 0;
 }
+/* Sized from the art window so the image shrinks with the card on short screens. */
 .answer-art--image .answer-art__img {
-  width: 130px;
-  height: 130px;
+  height: 100%;
+  max-height: 130px;
+  max-width: 45%;
+  width: auto;
+  aspect-ratio: 1;
 }
 .answer-art__img .hint-art__glyph {
   font-size: 44px;
@@ -687,4 +691,9 @@
   content: '';
   position: absolute;
   inset: -8px -4px;
+}
+
+/* Lets the answer font scale with the card (cqw) on short screens. */
+.face-back {
+  container-type: inline-size;
 }
