@@ -445,7 +445,7 @@
   color: var(--ink-dim);
   text-align: center;
 }
-/* The sentence, below the meaning and above its translation. */
+/* The sentence, below the meaning. */
 .answer-sentence {
   font-size: 17px;
   font-weight: 500;
@@ -479,11 +479,6 @@
 .answer-meaning {
   font-size: 22px;
   font-weight: 700;
-  text-align: center;
-}
-.answer-translation {
-  font-size: 13px;
-  color: var(--ink-dim);
   text-align: center;
 }
 .review__message {

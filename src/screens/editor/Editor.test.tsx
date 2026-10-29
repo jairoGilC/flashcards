@@ -213,7 +213,7 @@ describe('Editor · card form', () => {
   it('edits an existing card from the table and keeps its review progress', async () => {
     const u = user()
     const id = await withDeck()
-    const cardId = await saveCard(db, { deckId: id, question: '話す', answer: '話す', meaning: 'hablar' }, Date.now())
+    const cardId = await saveCard(db, { deckId: id, question: '話す', answer: '話す', meaning: 'hablar', translation: 'Hablo.' }, Date.now())
     await rateCard(db, cardId, 'good', Date.now())
     const before = (await db.cards.get(cardId))!.srs
     expect(before.state).not.toBe(CardState.New)
@@ -221,6 +221,8 @@ describe('Editor · card form', () => {
     renderEditor()
     await u.click(await screen.findByRole('button', { name: /editar carta 話す/i }))
     expect(screen.getByRole('heading', { name: 'Editar carta' })).toBeInTheDocument()
+    // No translation field: the card doesn't show it.
+    expect(screen.queryByLabelText(/Traducción/)).toBeNull()
     const meaning = screen.getByLabelText('Significado')
     expect(meaning).toHaveValue('hablar')
     await u.clear(meaning)
@@ -228,6 +230,8 @@ describe('Editor · card form', () => {
     await u.click(screen.getByRole('button', { name: /guardar cambios/i }))
 
     await waitFor(async () => expect((await db.cards.get(cardId))?.meaning).toBe('hablar, decir'))
+    // A translation that came from an import or an older version is kept, not wiped.
+    expect((await db.cards.get(cardId))!.translation).toBe('Hablo.')
     expect((await db.cards.get(cardId))!.srs).toEqual(before)
     expect(await db.cards.count()).toBe(1)
     expect(await screen.findByRole('heading', { name: 'Nueva carta' })).toBeInTheDocument()

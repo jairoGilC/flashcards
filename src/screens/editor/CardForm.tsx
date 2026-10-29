@@ -186,13 +186,6 @@ export function CardForm({ deck, editing, onDone }: { deck: DeckRow; editing?: C
         </div>
 
         <div className="ed-field">
-          <label className="label" htmlFor="ed-translation">
-            Traducción de la frase (opcional)
-          </label>
-          <input id="ed-translation" className="field" autoComplete="off" value={fields.translation} onChange={set('translation')} />
-        </div>
-
-        <div className="ed-field">
           <span className="label">Imagen de la respuesta (opcional)</span>
           <div
             className={`ed-drop ${dragging ? 'ed-drop--over' : ''}`}

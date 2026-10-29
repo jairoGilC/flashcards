@@ -74,7 +74,7 @@ export function BackFace({ card, deck }: { card: CardRow; deck: DeckRow }) {
             {card.reading}
           </span>
         )}
-        {(card.meaning || card.translation) && (
+        {card.meaning && (
           <span className="answer-divider" aria-hidden="true">
             <span />
             <MiniDiamond color="var(--gold)" />
@@ -85,7 +85,6 @@ export function BackFace({ card, deck }: { card: CardRow; deck: DeckRow }) {
         {(parseQuestion(card.question).isSentence || card.question.trim() !== card.answer.trim()) && (
           <QuestionText question={card.question} className="answer-sentence" />
         )}
-        {card.translation && <span className="answer-translation">{card.translation}</span>}
       </TcgCard>
     </CardSlot>
   )

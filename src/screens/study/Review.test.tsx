@@ -68,7 +68,8 @@ describe('Review', () => {
     expect(screen.getByTestId('answer')).toHaveAttribute('lang', 'ja')
     expect(screen.getByText('たべる')).toBeInTheDocument()
     expect(screen.getByText('comer')).toBeInTheDocument()
-    expect(screen.getByText('Como un onigiri cada mañana.')).toBeInTheDocument()
+    // The translation is redundant next to the answer and meaning, so it isn't shown.
+    expect(screen.queryByText('Como un onigiri cada mañana.')).toBeNull()
     // Four grade buttons with interval previews.
     expect(screen.getByRole('button', { name: /^Otra vez/ })).toHaveTextContent(/min/)
   })
@@ -111,7 +112,7 @@ describe('Review', () => {
     expect(document.querySelector('.tcg-card__art')).toBeNull()
     await flip()
     expect(document.querySelector('.tcg-card__art')).toBeNull()
-    // The sentence moves into the answer's text box, next to its translation.
+    // The sentence moves into the answer's text box.
     expect(document.querySelector('.tcg-card__body u')).toHaveTextContent('食べます')
   })
 
