@@ -126,4 +126,5 @@ Deferred from review: shared images can be deleted along with one card; zip-bomb
 - [x] Sentences with [word], Spanish reading/meaning, reviewed (14 fixes); Spanish sentence translations (Colombian register)
 - [x] App shows the sentence translation on sentence cards; editor field restored
 - [x] Image only after Bien/Fácil, with "Siguiente"
+- [x] Editor: "Imágenes para varias cartas" — many images at once, sorted by file name (numeric), go to the deck's cards without an image in card order; leftovers and unreadable files are reported
 - [x] Verified: all decks parse with `parseDeckZip`, 1500 distinct answers; Chrome at 375×667, 390×844, 430×932 with landscape and portrait images, no overflow

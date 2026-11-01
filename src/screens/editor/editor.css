@@ -314,6 +314,14 @@
   gap: 8px;
   align-items: center;
 }
+/* The result of "Imágenes para varias cartas" gets its own line under the buttons. */
+.ed-bulk-status {
+  order: 1;
+  flex-basis: 100%;
+}
+.ed-bulk-status:empty {
+  display: none;
+}
 .ed-rename {
   display: flex;
   flex-wrap: wrap;

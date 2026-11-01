@@ -9,6 +9,7 @@ import { CardState } from '../../core/scheduler'
 import { downloadBlob } from '../../io/files'
 import { parseDeckZip } from '../../core/deckFile'
 import Editor from '../Editor'
+import { resizeImage } from '../../media/resizeImage'
 
 vi.mock('../../io/files', async (orig) => ({ ...(await orig<typeof import('../../io/files')>()), downloadBlob: vi.fn() }))
 vi.mock('../../media/resizeImage', () => ({
@@ -343,3 +344,64 @@ describe('Editor · CSV import', () => {
     ])
   })
 })
+
+describe('Editor · images for many cards', () => {
+  // Each picked file becomes its own small image, named after it.
+  const resizeByName = () => {
+    vi.mocked(resizeImage).mockImplementation(async (f) => ({ blob: new Blob(['WEBP'], { type: 'image/webp' }), name: `${(f as File).name}.webp` }))
+  }
+  const png = (name: string) => new File(['PNG'], name, { type: 'image/png' })
+  afterEach(() => {
+    vi.mocked(resizeImage).mockReset()
+  })
+
+  async function deckWith(answers: string[], withImage: string[] = []) {
+    const id = await withDeck()
+    for (const a of answers) {
+      await saveCard(db, { deckId: id, question: a, answer: a, image: withImage.includes(a) ? { name: `${a}.webp`, blob: new Blob(['W'], { type: 'image/webp' }) } : undefined }, Date.now())
+    }
+    return id
+  }
+  const imageOf = async (id: string, answer: string) => (await db.cards.where('deckId').equals(id).toArray()).find((c) => c.answer === answer)?.imageId
+
+  it('gives the picked images, sorted by file name, to the first cards without one', async () => {
+    resizeByName()
+    const u = user()
+    const id = await deckWith(['犬', '猫', '鳥', '魚', '馬'], ['猫'])
+    renderEditor()
+    const input = await screen.findByLabelText(/imágenes para varias cartas/i)
+    expect(input).toHaveAttribute('multiple')
+    // Picked in any order; 2 comes before 10.
+    await u.upload(input, [png('10.png'), png('2.png'), png('1.png')])
+
+    expect(await screen.findByText('3 imágenes asignadas, de «犬» a «魚».')).toBeInTheDocument()
+    expect(await imageOf(id, '犬')).toBe(`${id}::1.png.webp`)
+    expect(await imageOf(id, '猫')).toBe(`${id}::猫.webp`)
+    expect(await imageOf(id, '鳥')).toBe(`${id}::2.png.webp`)
+    expect(await imageOf(id, '魚')).toBe(`${id}::10.png.webp`)
+    expect(await imageOf(id, '馬')).toBeUndefined()
+  })
+
+  it('says how many images were left over when there are fewer cards without one', async () => {
+    resizeByName()
+    const u = user()
+    const id = await deckWith(['犬', '猫'], ['猫'])
+    renderEditor()
+    await u.upload(await screen.findByLabelText(/imágenes para varias cartas/i), [png('a.png'), png('b.png'), png('c.png')])
+    expect(await screen.findByText('1 imagen asignada a «犬». 2 sobraron: ya no quedan cartas sin imagen.')).toBeInTheDocument()
+    expect(await imageOf(id, '犬')).toBe(`${id}::a.png.webp`)
+  })
+
+  it('skips a file it cannot read and keeps going', async () => {
+    resizeByName()
+    vi.mocked(resizeImage).mockRejectedValueOnce(new Error('bad'))
+    const u = user()
+    const id = await deckWith(['犬', '猫'])
+    renderEditor()
+    await u.upload(await screen.findByLabelText(/imágenes para varias cartas/i), [png('a.png'), png('b.png')])
+    expect(await screen.findByText('1 imagen asignada a «犬». No se pudo leer: a.png.')).toBeInTheDocument()
+    expect(await imageOf(id, '犬')).toBe(`${id}::b.png.webp`)
+    expect(await imageOf(id, '猫')).toBeUndefined()
+  })
+})
+

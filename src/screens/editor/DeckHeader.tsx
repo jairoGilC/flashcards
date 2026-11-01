@@ -7,6 +7,7 @@ import type { CardRow, DeckRow } from '../../db/db'
 import { deleteDeck, exportDeck, updateDeck } from '../../db/repo'
 import { downloadBlob, fileSlug } from '../../io/files'
 import { Icon } from '../../ui'
+import { BulkImages } from './BulkImages'
 import { RatingRadios } from './RatingRadios'
 import { formatBytes } from './validate'
 
@@ -120,6 +121,7 @@ export function DeckHeader({ deck, cards, csvOpen, onToggleCsv }: { deck: DeckRo
         <a className="ed-btn ed-btn--paper chrome" href={href('import')}>
           Importar .apkg
         </a>
+        <BulkImages deckId={deck.id} cards={cards} />
         <button type="button" className="ed-btn ed-btn--gold chrome" onClick={pack} disabled={packing || cards.length === 0}>
           {packing ? 'Empaquetando…' : 'Empaquetar sobre (.zip) para el móvil'}
         </button>

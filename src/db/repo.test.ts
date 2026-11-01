@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { KotobaDB } from './db'
 import {
+  assignImages,
   createDeck,
   deleteDeck,
   exportDeck,
@@ -118,6 +119,21 @@ describe('editor operations', () => {
     expect(deck.cards.map((c) => c.question)).toEqual(['コーヒー', 'パン'])
     expect(deck.cards[0].image).toBe('cafe.webp')
     expect([...m.keys()]).toEqual(['cafe.webp'])
+  })
+
+  it('assignImages fills the cards without an image in card order and counts the leftovers', async () => {
+    const id = await createDeck(db, { name: 'D', rating: 'green' }, NOW)
+    const img = (name: string) => ({ name, blob: new Blob([name], { type: 'image/webp' }) })
+    const ids: string[] = []
+    for (const q of ['a', 'b', 'c', 'd']) ids.push(await saveCard(db, { deckId: id, question: q, answer: q, image: q === 'b' ? img('old.webp') : undefined }, NOW))
+
+    const result = await assignImages(db, id, [img('p.webp'), img('q.webp'), img('r.webp'), img('s.webp')])
+
+    expect(result).toEqual({ assigned: [ids[0], ids[2], ids[3]], unused: 1 })
+    const cards = await db.cards.where('deckId').equals(id).sortBy('order')
+    expect(cards.map((c) => c.imageId)).toEqual([`${id}::p.webp`, `${id}::old.webp`, `${id}::q.webp`, `${id}::r.webp`])
+    // The leftover image is not stored.
+    expect((await db.media.toArray()).map((m) => m.name).sort()).toEqual(['old.webp', 'p.webp', 'q.webp', 'r.webp'])
   })
 
   it('saveCard with an id edits content but keeps SRS', async () => {
