@@ -450,6 +450,24 @@
   font-size: 17px;
   font-weight: 500;
 }
+.answer-translation {
+  font-size: 14px;
+  color: var(--ink-dim);
+  text-align: center;
+}
+/* Short phones (iPhone SE): a sentence plus its translation must still leave room for the image. */
+@media (max-height: 740px) {
+  .study-card .tcg-card__body {
+    gap: 6px;
+    padding: 10px 14px;
+  }
+  .answer-sentence {
+    font-size: 15px;
+  }
+  .answer-translation {
+    font-size: 13px;
+  }
+}
 .answer-row {
   display: flex;
   align-items: center;

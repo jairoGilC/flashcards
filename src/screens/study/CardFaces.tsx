@@ -116,6 +116,7 @@ export function BackFace({ card, deck }: { card: CardRow; deck: DeckRow }) {
   const onFail = useCallback(() => setFailed(true), [])
   const hasImage = !!card.imageId && !failed
   const frame = useImageFrame(slotRef, hasImage ? ratio : undefined)
+  const isSentence = parseQuestion(card.question).isSentence
   return (
     <CardSlot slotRef={slotRef}>
       <TcgCard
@@ -169,9 +170,11 @@ export function BackFace({ card, deck }: { card: CardRow; deck: DeckRow }) {
           </span>
         )}
         {card.meaning && <span className="answer-meaning">{card.meaning}</span>}
-        {(parseQuestion(card.question).isSentence || card.question.trim() !== card.answer.trim()) && (
+        {(isSentence || card.question.trim() !== card.answer.trim()) && (
           <QuestionText question={card.question} className="answer-sentence" />
         )}
+        {/* On a bare word the translation would just repeat the meaning. */}
+        {isSentence && card.translation && <span className="answer-translation">{card.translation}</span>}
       </TcgCard>
     </CardSlot>
   )

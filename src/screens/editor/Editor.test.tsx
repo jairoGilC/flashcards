@@ -55,11 +55,12 @@ async function withDeck(name = 'JLPT N5', rating: 'green' | 'red' = 'green') {
 
 const user = () => userEvent.setup()
 
-async function fillCard(u: ReturnType<typeof user>, values: { question: string; answer: string; reading?: string; meaning?: string }) {
+async function fillCard(u: ReturnType<typeof user>, values: { question: string; answer: string; reading?: string; meaning?: string; translation?: string }) {
   await u.type(screen.getByLabelText(/^Pregunta/), values.question.replace(/\[/g, '[['))
   await u.type(screen.getByLabelText('Respuesta'), values.answer)
   if (values.reading) await u.type(screen.getByLabelText('Lectura'), values.reading)
   if (values.meaning) await u.type(screen.getByLabelText('Significado'), values.meaning)
+  if (values.translation) await u.type(screen.getByLabelText(/^Traducción de la frase/), values.translation)
 }
 
 describe('Editor · decks', () => {
@@ -159,13 +160,14 @@ describe('Editor · card form', () => {
     const id = await withDeck()
     renderEditor()
     await screen.findByRole('heading', { name: 'Nueva carta' })
-    await fillCard(u, { question: '毎朝おにぎりを[食べます]。', answer: '食べる', reading: 'たべる', meaning: 'comer' })
+    await fillCard(u, { question: '毎朝おにぎりを[食べます]。', answer: '食べる', reading: 'たべる', meaning: 'comer', translation: 'Como un onigiri cada mañana.' })
     await u.click(screen.getByRole('button', { name: /forjar carta y siguiente/i }))
 
     await waitFor(async () => expect(await db.cards.where('deckId').equals(id).count()).toBe(1))
     const [card] = await db.cards.toArray()
-    expect(card).toMatchObject({ question: '毎朝おにぎりを[食べます]。', answer: '食べる', reading: 'たべる', meaning: 'comer' })
+    expect(card).toMatchObject({ question: '毎朝おにぎりを[食べます]。', answer: '食べる', reading: 'たべる', meaning: 'comer', translation: 'Como un onigiri cada mañana.' })
     await waitFor(() => expect(screen.getByLabelText(/^Pregunta/)).toHaveValue(''))
+    expect(screen.getByLabelText(/^Traducción de la frase/)).toHaveValue('')
     expect(screen.getByLabelText(/^Pregunta/)).toHaveFocus()
     const table = screen.getByRole('table')
     expect(await within(table).findByText('食べる')).toBeInTheDocument()
@@ -221,8 +223,7 @@ describe('Editor · card form', () => {
     renderEditor()
     await u.click(await screen.findByRole('button', { name: /editar carta 話す/i }))
     expect(screen.getByRole('heading', { name: 'Editar carta' })).toBeInTheDocument()
-    // No translation field: the card doesn't show it.
-    expect(screen.queryByLabelText(/Traducción/)).toBeNull()
+    expect(screen.getByLabelText(/^Traducción de la frase/)).toHaveValue('Hablo.')
     const meaning = screen.getByLabelText('Significado')
     expect(meaning).toHaveValue('hablar')
     await u.clear(meaning)
@@ -230,9 +231,8 @@ describe('Editor · card form', () => {
     await u.click(screen.getByRole('button', { name: /guardar cambios/i }))
 
     await waitFor(async () => expect((await db.cards.get(cardId))?.meaning).toBe('hablar, decir'))
-    // A translation that came from an import or an older version is kept, not wiped.
     expect((await db.cards.get(cardId))!.translation).toBe('Hablo.')
-    // Same for tags from deck.json / .apkg imports, which have no field in the form either.
+    // Tags from deck.json / .apkg imports have no field in the form; they are kept, not wiped.
     expect((await db.cards.get(cardId))!.tags).toEqual(['n5'])
     expect((await db.cards.get(cardId))!.srs).toEqual(before)
     expect(await db.cards.count()).toBe(1)

@@ -29,7 +29,7 @@ Mockup: https://claude.ai/artifact/NCEH53RDCeWdoYL2er5CZo
 
 - **Question** = a word, or a sentence with one word marked: `毎朝おにぎりを[食べます]。` → the bracketed part renders underlined.
 - **Answer** = the word: `answer` (dictionary form, 食べる), `reading` (たべる), `meaning` (comer), optional `translation` of the sentence.
-- **Layout (study):** the card fills the screen on both sides. Question side = text only (no art window). Answer side = image alone in a frame with the image's own proportions (read from the image, no orientation setting), as large as fits above the text; landscape/square fill the width, portrait frames are centered with a blurred copy of the image behind them. No art window without an image; the sentence sits in the text box below the meaning. The sentence translation is not shown (redundant next to answer + meaning, decided 2026-10-29) and has no editor field; it stays in the data model, deck.json, CSV (5th column, no longer advertised) and backups so existing data round-trips. Trade-off: an imported translation can't be edited or cleared in the UI.
+- **Layout (study):** the card fills the screen on both sides. Question side = text only (no art window). Answer side = image alone in a frame with the image's own proportions (read from the image, no orientation setting), as large as fits above the text; landscape/square fill the width, portrait frames are centered with a blurred copy of the image behind them. No art window without an image; the sentence sits in the text box below the meaning. The sentence translation shows under the sentence, only when the question is a sentence (on a bare word it would repeat the meaning; the 2026-10-29 "redundant" decision was about that case, revisited 2026-10-31). It has an editor field again ("Traducción de la frase") and is the 5th CSV column. On short screens (≤ 740px tall) the answer text tightens so the image keeps room.
 - **Image** = optional memory hook shown **only on the answer side**. The question side has no art window at all, because a picture there would give the meaning away and you'd learn the picture instead of the word (decided 2026-10-28).
 - Audio: Web Speech API with `ja-JP` voice reads the answer.
 
@@ -119,3 +119,10 @@ Card tags field exists in the model but has no editor UI yet.
 
 2026-10-28 (deploy prep). Added the GitHub Pages workflow (lint → test → build → deploy on push to `main`), an `npm test` script and a README. Pre-push reviews (code + senior) found one blocker, now fixed with tests: unrelated `.apkg` decks from Anki's "Default" deck (did 1) shared the id `apkg-1`, and "Reemplazar" would wipe the other deck. Also fixed: an Anki re-import no longer resets a red deck to green; duplicate card ids in deck.json are rejected; out-of-range `&#…;` entities no longer abort an Anki import; the import prompt names the deck already on the device; Google Fonts are cached for offline use; CI uses Node 22. 159 tests passing.
 Deferred from review: shared images can be deleted along with one card; zip-bomb size limits; full srs validation on backup restore; a stale app after a deploy can't lazy-load the sqlite chunk until relaunch; no Dexie versionchange handler; backup reminder; a padded maskable icon.
+
+## Top 1500 decks (2026-10-30/31)
+- [x] 30 deck .zips × 50 cards in `../kotoba-decks/top1500/` (outside the repo); source data + scripts in `../kotoba-decks/fuente/`
+- [x] Ranking from wordfreq (ja), lemmatized; particles/auxiliaries/names/vulgar/spelling variants dropped; 3 bands of 500 grouped by topic
+- [x] Sentences with [word], Spanish reading/meaning, reviewed (14 fixes); Spanish sentence translations (Colombian register)
+- [x] App shows the sentence translation on sentence cards; editor field restored
+- [x] Verified: all decks parse with `parseDeckZip`, 1500 distinct answers; Chrome at 375×667, 390×844, 430×932 with landscape and portrait images, no overflow

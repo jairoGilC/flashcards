@@ -68,10 +68,20 @@ describe('Review', () => {
     expect(screen.getByTestId('answer')).toHaveAttribute('lang', 'ja')
     expect(screen.getByText('たべる')).toBeInTheDocument()
     expect(screen.getByText('comer')).toBeInTheDocument()
-    // The translation is redundant next to the answer and meaning, so it isn't shown.
-    expect(screen.queryByText('Como un onigiri cada mañana.')).toBeNull()
+    // A sentence card shows what the whole sentence means.
+    expect(screen.getByText('Como un onigiri cada mañana.')).toHaveClass('answer-translation')
     // Four grade buttons with interval previews.
     expect(screen.getByRole('button', { name: /^Otra vez/ })).toHaveTextContent(/min/)
+  })
+
+  it('hides the translation on a bare-word card, where it repeats the meaning', async () => {
+    db = freshDb()
+    await seed(db, [deck('d')], [card('d', 'a', { question: '話す', answer: '話す', meaning: 'hablar', translation: 'Hablar.', srs: dueSrs() })])
+    renderWith(db, <Review />)
+    expect(await screen.findByText('¿Qué significa?')).toBeInTheDocument()
+    await flip()
+    expect(screen.getByText('hablar')).toBeInTheDocument()
+    expect(screen.queryByText('Hablar.')).toBeNull()
   })
 
   it('keeps the image off the question side and shows it with the answer', async () => {
