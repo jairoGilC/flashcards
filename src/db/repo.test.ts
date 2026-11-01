@@ -153,7 +153,8 @@ describe('editor operations', () => {
     // The user replaces b's image by hand before undoing.
     await saveCard(db, { id: ids[1], deckId: id, question: 'b', answer: 'b', image: img('mine.webp') }, NOW)
 
-    await clearImages(db, assigned)
+    // Only a's image is still the one the batch set.
+    expect(await clearImages(db, assigned)).toBe(1)
 
     const cards = await db.cards.where('deckId').equals(id).sortBy('order')
     expect(cards.map((c) => c.imageId)).toEqual([undefined, `${id}::mine.webp`])

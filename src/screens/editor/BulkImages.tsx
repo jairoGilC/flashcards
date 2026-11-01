@@ -4,7 +4,7 @@ import type { CardRow } from '../../db/db'
 import { assignImages, clearImages, type AssignedImage } from '../../db/repo'
 import { resizeImage } from '../../media/resizeImage'
 
-const HELP = 'Van por nombre de archivo (1, 2, 10…) a las cartas que aún no tienen imagen, en su orden.'
+const HELP = 'Se asignan por nombre de archivo (1, 2, 10…) a las cartas sin imagen, en el orden del mazo.'
 
 // File pickers don't keep the click order, so the file name decides: 2.png before 10.png.
 const byName = (a: File, b: File) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
@@ -32,7 +32,8 @@ export function BulkImages({ deckId, cards }: { deckId: string; cards: CardRow[]
   const [message, setMessage] = useState('')
   // The last batch, so it can be undone.
   const [last, setLast] = useState<AssignedImage[]>([])
-  const noneEmpty = cards.every((c) => c.imageId)
+  // Why the picker is off, if it is.
+  const blocked = cards.length === 0 ? 'El mazo aún no tiene cartas.' : cards.every((c) => c.imageId) ? 'Todas las cartas ya tienen imagen.' : undefined
 
   const pick = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = [...(e.target.files ?? [])].sort(byName)
@@ -63,9 +64,14 @@ export function BulkImages({ deckId, cards }: { deckId: string; cards: CardRow[]
   }
 
   const undo = async () => {
-    await clearImages(db, last)
-    setLast([])
-    setMessage('Imágenes quitadas.')
+    try {
+      const n = await clearImages(db, last)
+      setMessage(n === 0 ? 'Nada que deshacer: esas cartas ya cambiaron.' : n === 1 ? '1 imagen quitada.' : `${n} imágenes quitadas.`)
+      setLast([])
+    } catch {
+      // Deshacer stays, so it can be tried again.
+      setMessage('No se pudieron quitar las imágenes.')
+    }
   }
 
   return (
@@ -77,14 +83,14 @@ export function BulkImages({ deckId, cards }: { deckId: string; cards: CardRow[]
           accept="image/*"
           multiple
           className="sr-only"
-          disabled={!!progress || noneEmpty}
+          disabled={!!progress || !!blocked}
           aria-describedby="ed-bulk-help"
           onChange={(e) => void pick(e)}
         />
       </label>
       <div className="ed-bulk-status">
         <span id="ed-bulk-help" className="ed-help" hidden={!!message}>
-          {HELP}
+          {blocked ?? HELP}
         </span>
         <span role="status" className="ed-help">
           {message}

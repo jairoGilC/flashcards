@@ -542,7 +542,8 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
-.ed-filebtn:focus-within {
+/* Keyboard focus only, like the other editor buttons. */
+.ed-filebtn:has(input:focus-visible) {
   outline: 2px solid var(--indigo);
   outline-offset: 2px;
 }

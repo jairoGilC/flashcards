@@ -237,15 +237,18 @@ export async function assignImages(
   })
 }
 
-/** Undoes `assignImages`; a card whose image changed since keeps it. */
-export async function clearImages(db: KotobaDB, assigned: AssignedImage[]): Promise<void> {
-  await db.transaction('rw', db.cards, db.media, async () => {
+/** Undoes `assignImages`; a card whose image changed since keeps it. Returns how many images were removed. */
+export async function clearImages(db: KotobaDB, assigned: AssignedImage[]): Promise<number> {
+  return db.transaction('rw', db.cards, db.media, async () => {
+    let removed = 0
     for (const a of assigned) {
       const card = await db.cards.get(a.id)
       if (card?.imageId !== a.imageId) continue
       await db.cards.put({ ...card, imageId: undefined })
       await db.media.delete(a.imageId)
+      removed += 1
     }
+    return removed
   })
 }
 

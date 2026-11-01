@@ -417,14 +417,20 @@ describe('Editor · images for many cards', () => {
     await u.click(screen.getByRole('button', { name: 'Deshacer' }))
     await waitFor(async () => expect(await imageOf(id, '犬')).toBeUndefined())
     expect(await imageOf(id, '猫')).toBe(`${id}::猫.webp`)
-    expect(await screen.findByText('Imágenes quitadas.')).toBeInTheDocument()
+    expect(await screen.findByText('1 imagen quitada.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Deshacer' })).toBeNull()
   })
 
-  it('is disabled when every card already has an image', async () => {
+  it('is disabled, and says why, when every card already has an image or there are no cards', async () => {
     await deckWith(['犬', '猫'], ['犬', '猫'])
     renderEditor()
     expect(await screen.findByLabelText(/imágenes para cartas sin imagen/i)).toBeDisabled()
+    expect(screen.getByText('Todas las cartas ya tienen imagen.')).toBeVisible()
+    cleanup()
+    await withDeck('Vacío')
+    renderEditor()
+    expect(await screen.findByLabelText(/imágenes para cartas sin imagen/i)).toBeDisabled()
+    expect(screen.getByText('El mazo aún no tiene cartas.')).toBeVisible()
   })
 
   it('names every file it could not read', async () => {
