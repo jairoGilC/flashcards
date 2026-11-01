@@ -23,14 +23,17 @@ afterEach(() => {
 const afterHold = () => vi.setSystemTime(Date.now() + 500)
 /** A tap right away, as the second half of a double tap. Waits for the button (the DB write behind a grade is async), not the clock. */
 const tap = async (name: string | RegExp) => userEvent.click(await screen.findByRole('button', { name }))
-const flip = () => {
+/**
+ * A deliberate tap: wait for the button first, then let time pass. The hold starts when the buttons swap,
+ * which can be after the previous grade's DB write; moving the clock before that would land inside the hold.
+ */
+const press = async (name: string | RegExp) => {
+  const button = await screen.findByRole('button', { name })
   afterHold()
-  return tap('Girar carta')
+  await userEvent.click(button)
 }
-const grade = (name: RegExp) => {
-  afterHold()
-  return tap(name)
-}
+const flip = () => press('Girar carta')
+const grade = (name: RegExp) => press(name)
 
 // jsdom has no object URLs; stub them for the image.
 function stubUrls() {
@@ -234,8 +237,7 @@ describe('Review', () => {
     // Double tap on Siguiente: the second tap lands on Girar carta, in the same spot, and is ignored.
     await flip()
     await grade(/^Bien/)
-    afterHold()
-    await tap('Siguiente')
+    await press('Siguiente')
     await tap('Girar carta')
     expect(screen.queryByTestId('answer')).toBeNull()
   })
@@ -313,13 +315,12 @@ describe('Review', () => {
       await grade(/^Bien/)
       // The missing row fails on its own; the undecodable image fails once its <img> renders and errors.
       // Either way there is no image to show, so it moves on without waiting for Siguiente.
+      // One waitFor until the next card (or the summary) is up: the image step may not have started yet.
       await waitFor(() => {
         const broken = screen.queryByRole('img', { name: 'Pista visual' })
         if (broken) fireEvent.error(broken)
-        expect(screen.queryByRole('button', { name: 'Siguiente' })).toBeNull()
+        expect(screen.queryByText('¡Repaso completado!') ?? screen.getByRole('button', { name: 'Girar carta' })).toBeInTheDocument()
       })
-      afterHold()
-      await waitFor(() => expect(screen.queryByText('¡Repaso completado!') ?? screen.getByRole('button', { name: 'Girar carta' })).toBeInTheDocument())
     }
   })
 

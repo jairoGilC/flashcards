@@ -42,7 +42,7 @@ export function CsvImport({ deckId, onClose }: { deckId: string; onClose: () => 
       </label>
       <textarea id="ed-csv-text" className="field ed-csv__text" lang="ja" rows={6} value={text} onChange={(e) => setText(e.target.value)} />
       <div className="ed-row ed-row--between">
-        <label className="ed-btn ed-btn--paper chrome ed-csv__file">
+        <label className="ed-btn ed-btn--paper chrome ed-filebtn">
           O elige un archivo .csv / .tsv
           <input
             type="file"

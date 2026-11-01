@@ -351,8 +351,10 @@ describe('Editor · images for many cards', () => {
     vi.mocked(resizeImage).mockImplementation(async (f) => ({ blob: new Blob(['WEBP'], { type: 'image/webp' }), name: `${(f as File).name}.webp` }))
   }
   const png = (name: string) => new File(['PNG'], name, { type: 'image/png' })
+  const defaultResize = vi.mocked(resizeImage).getMockImplementation()
   afterEach(() => {
     vi.mocked(resizeImage).mockReset()
+    if (defaultResize) vi.mocked(resizeImage).mockImplementation(defaultResize)
   })
 
   async function deckWith(answers: string[], withImage: string[] = []) {
@@ -369,16 +371,18 @@ describe('Editor · images for many cards', () => {
     const u = user()
     const id = await deckWith(['犬', '猫', '鳥', '魚', '馬'], ['猫'])
     renderEditor()
-    const input = await screen.findByLabelText(/imágenes para varias cartas/i)
+    const input = await screen.findByLabelText(/imágenes para cartas sin imagen/i)
     expect(input).toHaveAttribute('multiple')
-    // Picked in any order; 2 comes before 10.
-    await u.upload(input, [png('10.png'), png('2.png'), png('1.png')])
+    // The rule is on screen, not only in a tooltip.
+    expect(screen.getByText(/por nombre de archivo/i)).toBeVisible()
+    // Picked in any order; 2 comes before 10, and case doesn't matter.
+    await u.upload(input, [png('img_10.png'), png('IMG_0002.png'), png('Img_1.png')])
 
     expect(await screen.findByText('3 imágenes asignadas, de «犬» a «魚».')).toBeInTheDocument()
-    expect(await imageOf(id, '犬')).toBe(`${id}::1.png.webp`)
+    expect(await imageOf(id, '犬')).toBe(`${id}::Img_1.png.webp`)
     expect(await imageOf(id, '猫')).toBe(`${id}::猫.webp`)
-    expect(await imageOf(id, '鳥')).toBe(`${id}::2.png.webp`)
-    expect(await imageOf(id, '魚')).toBe(`${id}::10.png.webp`)
+    expect(await imageOf(id, '鳥')).toBe(`${id}::IMG_0002.png.webp`)
+    expect(await imageOf(id, '魚')).toBe(`${id}::img_10.png.webp`)
     expect(await imageOf(id, '馬')).toBeUndefined()
   })
 
@@ -387,7 +391,7 @@ describe('Editor · images for many cards', () => {
     const u = user()
     const id = await deckWith(['犬', '猫'], ['猫'])
     renderEditor()
-    await u.upload(await screen.findByLabelText(/imágenes para varias cartas/i), [png('a.png'), png('b.png'), png('c.png')])
+    await u.upload(await screen.findByLabelText(/imágenes para cartas sin imagen/i), [png('a.png'), png('b.png'), png('c.png')])
     expect(await screen.findByText('1 imagen asignada a «犬». 2 sobraron: ya no quedan cartas sin imagen.')).toBeInTheDocument()
     expect(await imageOf(id, '犬')).toBe(`${id}::a.png.webp`)
   })
@@ -398,10 +402,38 @@ describe('Editor · images for many cards', () => {
     const u = user()
     const id = await deckWith(['犬', '猫'])
     renderEditor()
-    await u.upload(await screen.findByLabelText(/imágenes para varias cartas/i), [png('a.png'), png('b.png')])
+    await u.upload(await screen.findByLabelText(/imágenes para cartas sin imagen/i), [png('a.png'), png('b.png')])
     expect(await screen.findByText('1 imagen asignada a «犬». No se pudo leer: a.png.')).toBeInTheDocument()
     expect(await imageOf(id, '犬')).toBe(`${id}::b.png.webp`)
     expect(await imageOf(id, '猫')).toBeUndefined()
   })
-})
+  it('undoes the last batch', async () => {
+    resizeByName()
+    const u = user()
+    const id = await deckWith(['犬', '猫'], ['猫'])
+    renderEditor()
+    await u.upload(await screen.findByLabelText(/imágenes para cartas sin imagen/i), [png('a.png')])
+    await screen.findByText('1 imagen asignada a «犬».')
+    await u.click(screen.getByRole('button', { name: 'Deshacer' }))
+    await waitFor(async () => expect(await imageOf(id, '犬')).toBeUndefined())
+    expect(await imageOf(id, '猫')).toBe(`${id}::猫.webp`)
+    expect(await screen.findByText('Imágenes quitadas.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Deshacer' })).toBeNull()
+  })
 
+  it('is disabled when every card already has an image', async () => {
+    await deckWith(['犬', '猫'], ['犬', '猫'])
+    renderEditor()
+    expect(await screen.findByLabelText(/imágenes para cartas sin imagen/i)).toBeDisabled()
+  })
+
+  it('names every file it could not read', async () => {
+    resizeByName()
+    vi.mocked(resizeImage).mockRejectedValueOnce(new Error('bad')).mockRejectedValueOnce(new Error('bad'))
+    const u = user()
+    await deckWith(['犬'])
+    renderEditor()
+    await u.upload(await screen.findByLabelText(/imágenes para cartas sin imagen/i), [png('a.png'), png('b.png')])
+    expect(await screen.findByText('Ninguna imagen asignada. No se pudieron leer: a.png, b.png.')).toBeInTheDocument()
+  })
+})

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { KotobaDB } from './db'
 import {
   assignImages,
+  clearImages,
   createDeck,
   deleteDeck,
   exportDeck,
@@ -129,11 +130,34 @@ describe('editor operations', () => {
 
     const result = await assignImages(db, id, [img('p.webp'), img('q.webp'), img('r.webp'), img('s.webp')])
 
-    expect(result).toEqual({ assigned: [ids[0], ids[2], ids[3]], unused: 1 })
+    expect(result).toEqual({
+      assigned: [
+        { id: ids[0], answer: 'a', imageId: `${id}::p.webp` },
+        { id: ids[2], answer: 'c', imageId: `${id}::q.webp` },
+        { id: ids[3], answer: 'd', imageId: `${id}::r.webp` },
+      ],
+      unused: 1,
+    })
     const cards = await db.cards.where('deckId').equals(id).sortBy('order')
     expect(cards.map((c) => c.imageId)).toEqual([`${id}::p.webp`, `${id}::old.webp`, `${id}::q.webp`, `${id}::r.webp`])
     // The leftover image is not stored.
     expect((await db.media.toArray()).map((m) => m.name).sort()).toEqual(['old.webp', 'p.webp', 'q.webp', 'r.webp'])
+  })
+
+  it('clearImages undoes a batch, except on cards whose image changed since', async () => {
+    const id = await createDeck(db, { name: 'D', rating: 'green' }, NOW)
+    const img = (name: string) => ({ name, blob: new Blob([name], { type: 'image/webp' }) })
+    const ids: string[] = []
+    for (const q of ['a', 'b']) ids.push(await saveCard(db, { deckId: id, question: q, answer: q }, NOW))
+    const { assigned } = await assignImages(db, id, [img('p.webp'), img('q.webp')])
+    // The user replaces b's image by hand before undoing.
+    await saveCard(db, { id: ids[1], deckId: id, question: 'b', answer: 'b', image: img('mine.webp') }, NOW)
+
+    await clearImages(db, assigned)
+
+    const cards = await db.cards.where('deckId').equals(id).sortBy('order')
+    expect(cards.map((c) => c.imageId)).toEqual([undefined, `${id}::mine.webp`])
+    expect((await db.media.toArray()).map((m) => m.name)).toEqual(['mine.webp'])
   })
 
   it('saveCard with an id edits content but keeps SRS', async () => {

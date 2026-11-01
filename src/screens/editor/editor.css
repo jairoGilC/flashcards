@@ -314,13 +314,13 @@
   gap: 8px;
   align-items: center;
 }
-/* The result of "Imágenes para varias cartas" gets its own line under the buttons. */
+/* The rule and the result of "Imágenes para cartas sin imagen" get their own line under the buttons. */
 .ed-bulk-status {
   order: 1;
   flex-basis: 100%;
-}
-.ed-bulk-status:empty {
-  display: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .ed-rename {
   display: flex;
@@ -535,10 +535,14 @@
   font-size: 14px;
   resize: vertical;
 }
-.ed-csv__file {
+.ed-filebtn {
   cursor: pointer;
 }
-.ed-csv__file:focus-within {
+.ed-filebtn:has(input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ed-filebtn:focus-within {
   outline: 2px solid var(--indigo);
   outline-offset: 2px;
 }

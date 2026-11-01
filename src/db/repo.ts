@@ -209,6 +209,12 @@ export async function saveCard(db: KotobaDB, input: CardInput, now: number): Pro
   })
 }
 
+export interface AssignedImage {
+  id: string
+  answer: string
+  imageId: string
+}
+
 /**
  * Gives each image, in the order given, to the next card of the deck that has none (by card order).
  * Images beyond the last such card are not stored; `unused` counts them.
@@ -217,14 +223,29 @@ export async function assignImages(
   db: KotobaDB,
   deckId: string,
   images: { name: string; blob: Blob }[],
-): Promise<{ assigned: string[]; unused: number }> {
+): Promise<{ assigned: AssignedImage[]; unused: number }> {
   const rows = await Promise.all(images.map((img) => mediaRow(deckId, img.name, img.blob)))
   return db.transaction('rw', db.cards, db.media, async () => {
     const empty = (await db.cards.where('deckId').equals(deckId).sortBy('order')).filter((c) => !c.imageId)
     const pairs = empty.slice(0, rows.length).map((card, i) => ({ card, row: rows[i] }))
     await db.media.bulkPut(pairs.map((p) => p.row))
     await db.cards.bulkPut(pairs.map((p) => ({ ...p.card, imageId: p.row.id })))
-    return { assigned: pairs.map((p) => p.card.id), unused: rows.length - pairs.length }
+    return {
+      assigned: pairs.map((p) => ({ id: p.card.id, answer: p.card.answer, imageId: p.row.id })),
+      unused: rows.length - pairs.length,
+    }
+  })
+}
+
+/** Undoes `assignImages`; a card whose image changed since keeps it. */
+export async function clearImages(db: KotobaDB, assigned: AssignedImage[]): Promise<void> {
+  await db.transaction('rw', db.cards, db.media, async () => {
+    for (const a of assigned) {
+      const card = await db.cards.get(a.id)
+      if (card?.imageId !== a.imageId) continue
+      await db.cards.put({ ...card, imageId: undefined })
+      await db.media.delete(a.imageId)
+    }
   })
 }
 
