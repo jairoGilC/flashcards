@@ -93,6 +93,7 @@ export default function Review({ deckId }: { deckId?: string }) {
 
   const flip = useCallback((e?: { detail: number }) => {
     if (tooSoon(e, holdUntil.current)) return
+    holdUntil.current = Date.now() + DOUBLE_TAP_MS
     setFlipped(true)
   }, [])
 
@@ -111,10 +112,8 @@ export default function Review({ deckId }: { deckId?: string }) {
           })
         }
         setTally((t) => ({ ...t, [g]: t[g] + 1 }))
-        if ((g === 'good' || g === 'easy') && current.imageId && deck) {
-          holdUntil.current = Date.now() + DOUBLE_TAP_MS
-          setReward({ card: updated, deck })
-        }
+        holdUntil.current = Date.now() + DOUBLE_TAP_MS
+        if ((g === 'good' || g === 'easy') && current.imageId && deck) setReward({ card: updated, deck })
         setPos((p) => p + 1)
         setFlipped(false)
         setError(undefined)
@@ -188,7 +187,7 @@ export default function Review({ deckId }: { deckId?: string }) {
                 </span>
               )}
             </div>
-            {(current || reward) && <DiamondPips total={ids.length} done={pos} />}
+            {(current || reward) && <DiamondPips total={ids.length} done={reward ? pos - 1 : pos} />}
           </div>
         </header>
 
@@ -256,7 +255,9 @@ export default function Review({ deckId }: { deckId?: string }) {
                       variant={GRADE_UI[p.grade].variant}
                       highlight={p.grade === 'good'}
                       className="grade-btn"
-                      onClick={() => void grade(p.grade)}
+                      onClick={(e) => {
+                        if (!tooSoon(e, holdUntil.current)) void grade(p.grade)
+                      }}
                     >
                       <span className="grade-btn__label">{GRADE_UI[p.grade].label}</span>
                       <span className="grade-btn__ivl">{p.label}</span>

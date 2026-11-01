@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Review from '../Review'
@@ -8,17 +8,29 @@ import { card, deck, dueSrs, freshDb, renderWith, seed } from './testUtils'
 
 let db: KotobaDB
 // Unmount first so live queries stop before the DB closes (afterEach runs before RTL's auto-cleanup).
+// Only Date is faked: the double-tap guard reads the clock, while timers, Dexie and userEvent run for real.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+})
 afterEach(() => {
+  vi.useRealTimers()
   cleanup()
   db?.close()
   vi.restoreAllMocks()
 })
 
-const flip = () => userEvent.click(screen.getByRole('button', { name: 'Girar carta' }))
-const grade = (name: RegExp) => userEvent.click(screen.getByRole('button', { name }))
-
-// Taps within the double-tap window after a button swap are ignored, as on the phone.
-const afterHold = () => new Promise((r) => setTimeout(r, 450))
+// Taps within the double-tap window after a button swap are ignored, as on the phone; a person pauses longer.
+const afterHold = () => vi.setSystemTime(Date.now() + 500)
+/** A tap right away, as the second half of a double tap. */
+const tap = (name: string | RegExp) => userEvent.click(screen.getByRole('button', { name }))
+const flip = () => {
+  afterHold()
+  return tap('Girar carta')
+}
+const grade = (name: RegExp) => {
+  afterHold()
+  return tap(name)
+}
 
 // jsdom has no object URLs; stub them for the image.
 function stubUrls() {
@@ -161,7 +173,7 @@ describe('Review', () => {
     expect(art).not.toHaveTextContent('おにぎり')
     expect(document.querySelector('.tcg-card__body')).toHaveTextContent('おにぎり')
 
-    await afterHold()
+    afterHold()
     await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
     expect(await screen.findByText('¡Repaso completado!')).toBeInTheDocument()
   })
@@ -211,22 +223,43 @@ describe('Review', () => {
     await flip()
     await grade(/^Bien/)
     await screen.findByRole('button', { name: 'Siguiente' })
-    await afterHold()
+    afterHold()
     await userEvent.keyboard('{Enter}')
     // The browser's auto-repeat while Enter stays down.
     fireEvent.keyDown(document.body, { key: 'Enter', repeat: true })
     fireEvent.keyDown(document.body, { key: 'Enter', repeat: true })
     expect(await screen.findByRole('button', { name: 'Girar carta' })).toBeInTheDocument()
     expect(screen.queryByTestId('answer')).toBeNull()
-    // Double tap: the second tap lands on Girar carta, in the same spot, and is ignored.
-    await afterHold()
+    // Double tap on Siguiente: the second tap lands on Girar carta, in the same spot, and is ignored.
     await flip()
     await grade(/^Bien/)
-    await screen.findByRole('button', { name: 'Siguiente' })
-    await afterHold()
-    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
-    await flip()
+    afterHold()
+    await tap('Siguiente')
+    await tap('Girar carta')
     expect(screen.queryByTestId('answer')).toBeNull()
+  })
+
+  it('ignores the second tap of a double tap on Girar carta, a grade or Bien', async () => {
+    stubUrls()
+    db = freshDb()
+    await seedCats(3)
+    renderWith(db, <Review deckId="d" />)
+    // Girar carta → the grade row appears under the finger: no grade is saved.
+    await screen.findByRole('button', { name: 'Girar carta' })
+    afterHold()
+    await tap('Girar carta')
+    await tap(/^Bien/)
+    expect(await db.reviews.count()).toBe(0)
+    // Difícil → the next card's Girar carta appears under the finger: it stays unflipped.
+    await grade(/^Difícil/)
+    await tap('Girar carta')
+    expect(screen.queryByTestId('answer')).toBeNull()
+    // Bien → Siguiente appears under the finger: the image stays up.
+    await flip()
+    await grade(/^Bien/)
+    await tap('Siguiente')
+    expect(screen.getByRole('img', { name: 'Pista visual' })).toBeInTheDocument()
+    expect(await db.reviews.count()).toBe(2)
   })
 
   it('shows the image of a learning card graded Bien, then brings the card back text-only', async () => {
@@ -240,9 +273,9 @@ describe('Review', () => {
     await flip()
     await grade(/^Bien/)
     expect(await screen.findByRole('img', { name: 'Pista visual' })).toBeInTheDocument()
-    await afterHold()
+    afterHold()
     await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
-    await afterHold()
+    afterHold()
     await flip()
     expect(await screen.findByTestId('answer')).toHaveTextContent('猫')
     expect(document.querySelector('.tcg-card__art')).toBeNull()
@@ -284,7 +317,7 @@ describe('Review', () => {
         if (broken) fireEvent.error(broken)
         expect(screen.queryByRole('button', { name: 'Siguiente' })).toBeNull()
       })
-      await afterHold()
+      afterHold()
       await waitFor(() => expect(screen.queryByText('¡Repaso completado!') ?? screen.getByRole('button', { name: 'Girar carta' })).toBeInTheDocument())
     }
   })

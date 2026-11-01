@@ -323,6 +323,8 @@
 .review {
   padding-left: 16px;
   padding-right: 16px;
+  /* No double-tap zoom on iOS: quick taps on the study buttons must reach the double-tap guard. */
+  touch-action: manipulation;
 }
 /* While a card is up the screen is exactly one viewport tall, so the stage has a definite height to fill. */
 .review--card {
