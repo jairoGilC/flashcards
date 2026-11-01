@@ -111,12 +111,26 @@ function speak(text: string) {
 }
 
 /** `showImage` is off while grading: the image only comes after a Bien or Fácil. */
-export function BackFace({ card, deck, showImage = false }: { card: CardRow; deck: DeckRow; showImage?: boolean }) {
+export function BackFace({
+  card,
+  deck,
+  showImage = false,
+  onImageFail,
+}: {
+  card: CardRow
+  deck: DeckRow
+  showImage?: boolean
+  /** Called when the image is missing or can't be decoded. */
+  onImageFail?: () => void
+}) {
   const slotRef = useRef<HTMLDivElement>(null)
   const [ratio, setRatio] = useState<number>()
   // A missing or undecodable image leaves a text-only answer rather than an empty frame.
   const [failed, setFailed] = useState(false)
-  const onFail = useCallback(() => setFailed(true), [])
+  const onFail = useCallback(() => {
+    setFailed(true)
+    onImageFail?.()
+  }, [onImageFail])
   const hasImage = showImage && !!card.imageId && !failed
   const frame = useImageFrame(slotRef, hasImage ? ratio : undefined)
   const q = parseQuestion(card.question)

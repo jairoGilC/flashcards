@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, MouseEvent, ReactNode } from 'react'
 import { parseQuestion } from '../core/question'
 import type { DeckRating } from '../core/queue'
 import './ui.css'
@@ -16,9 +16,11 @@ interface FacetButtonProps {
   /** Stretch to the container width. */
   full?: boolean
   href?: string
-  onClick?: () => void
+  onClick?: (e: MouseEvent<HTMLButtonElement>) => void
   disabled?: boolean
   type?: 'button' | 'submit'
+  /** Take focus on mount, for a button that replaces the one just pressed. */
+  autoFocus?: boolean
   ariaLabel?: string
   /** Glow, for the suggested choice. */
   highlight?: boolean
@@ -37,6 +39,7 @@ export function FacetButton({
   ariaLabel,
   highlight,
   className = '',
+  autoFocus,
 }: FacetButtonProps) {
   const cls = `facet-btn facet ${size === 's' ? 'facet-s' : ''} facet-btn--${variant} facet-btn--${size} ${full ? 'facet-btn--full' : ''} ${highlight ? 'facet-btn--glow' : ''} ${className}`
   const inner = <span className={`facet-btn__body facet ${size === 's' ? 'facet-s' : ''}`}>{children}</span>
@@ -48,7 +51,7 @@ export function FacetButton({
     )
   }
   return (
-    <button className={cls} type={type} onClick={onClick} disabled={disabled} aria-label={ariaLabel}>
+    <button className={cls} type={type} onClick={onClick} disabled={disabled} aria-label={ariaLabel} autoFocus={autoFocus}>
       {inner}
     </button>
   )

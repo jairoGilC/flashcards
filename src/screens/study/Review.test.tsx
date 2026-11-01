@@ -17,6 +17,23 @@ afterEach(() => {
 const flip = () => userEvent.click(screen.getByRole('button', { name: 'Girar carta' }))
 const grade = (name: RegExp) => userEvent.click(screen.getByRole('button', { name }))
 
+// Taps within the double-tap window after a button swap are ignored, as on the phone.
+const afterHold = () => new Promise((r) => setTimeout(r, 450))
+
+// jsdom has no object URLs; stub them for the image.
+function stubUrls() {
+  URL.createObjectURL = () => ''
+  URL.revokeObjectURL = () => {}
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+  return vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:hint')
+}
+
+/** `n` due cards in deck `d` sharing one image. */
+async function seedCats(n: number) {
+  await seed(db, [deck('d')], Array.from({ length: n }, (_, i) => card('d', `c${i}`, { order: i, question: `[猫${i}]がいる。`, answer: `猫${i}`, imageId: 'd::cat.webp', srs: dueSrs() })))
+  await db.media.put({ id: 'd::cat.webp', deckId: 'd', name: 'cat.webp', type: 'image/webp', data: new ArrayBuffer(3) })
+}
+
 describe('Review', () => {
   it('flips, grades, persists the rating and ends with a summary', async () => {
     db = freshDb()
@@ -144,48 +161,91 @@ describe('Review', () => {
     expect(art).not.toHaveTextContent('おにぎり')
     expect(document.querySelector('.tcg-card__body')).toHaveTextContent('おにぎり')
 
+    await afterHold()
     await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
     expect(await screen.findByText('¡Repaso completado!')).toBeInTheDocument()
   })
 
   it('goes straight to the next card after Otra vez or Difícil, without the image', async () => {
-    URL.createObjectURL = () => ''
-    URL.revokeObjectURL = () => {}
-    const createUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:hint')
-    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    const createUrl = stubUrls()
     db = freshDb()
-    await seed(db, [deck('d')], [
-      card('d', 'a', { order: 0, question: '[猫]がいる。', answer: '猫', imageId: 'd::cat.webp', srs: dueSrs() }),
-      card('d', 'b', { order: 1, question: '[犬]がいる。', answer: '犬', imageId: 'd::cat.webp', srs: dueSrs() }),
-    ])
-    await db.media.put({ id: 'd::cat.webp', deckId: 'd', name: 'cat.webp', type: 'image/webp', data: new ArrayBuffer(3) })
+    await seedCats(3)
     renderWith(db, <Review deckId="d" />)
-    await screen.findByRole('button', { name: 'Girar carta' })
-    await flip()
-    await grade(/^Difícil/)
-    expect(await screen.findByRole('button', { name: 'Girar carta' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Siguiente' })).toBeNull()
+    for (const g of [/^Otra vez/, /^Difícil/]) {
+      await screen.findByRole('button', { name: 'Girar carta' })
+      await flip()
+      await grade(g)
+      expect(await screen.findByRole('button', { name: 'Girar carta' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Siguiente' })).toBeNull()
+    }
     expect(createUrl).not.toHaveBeenCalled()
   })
 
-  it('shows the image after Fácil and continues with Enter', async () => {
-    URL.createObjectURL = () => ''
-    URL.revokeObjectURL = () => {}
-    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:hint')
-    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+  it('focuses Siguiente, keeps the count on the graded card and ignores grade keys while the image shows', async () => {
+    stubUrls()
     db = freshDb()
-    await seed(db, [deck('d')], [card('d', 'a', { question: '[猫]がいる。', answer: '猫', imageId: 'd::cat.webp', srs: dueSrs() })])
-    await db.media.put({ id: 'd::cat.webp', deckId: 'd', name: 'cat.webp', type: 'image/webp', data: new ArrayBuffer(3) })
-    renderWith(db, <Review />)
+    await seedCats(2)
+    renderWith(db, <Review deckId="d" />)
     await screen.findByRole('button', { name: 'Girar carta' })
     await flip()
     await userEvent.keyboard('4')
     expect(await screen.findByRole('img', { name: 'Pista visual' })).toBeInTheDocument()
-    // Grade keys do nothing while the image shows; Enter moves on.
+    expect(screen.getByRole('button', { name: 'Siguiente' })).toHaveFocus()
+    // Still the first card's place in the session.
+    expect(screen.getByText('1 / 2')).toBeInTheDocument()
     await userEvent.keyboard('1')
     expect(await db.reviews.count()).toBe(1)
+    expect(screen.getByRole('button', { name: 'Siguiente' })).toBeInTheDocument()
+    await userEvent.keyboard(' ')
+    expect(await screen.findByRole('button', { name: 'Girar carta' })).toBeInTheDocument()
+    expect(screen.getByText('2 / 2')).toBeInTheDocument()
+  })
+
+  it('does not flip the next card from a held key or a double tap on Siguiente', async () => {
+    stubUrls()
+    db = freshDb()
+    await seedCats(3)
+    renderWith(db, <Review deckId="d" />)
+    // Held Enter: the first press continues, the repeats must not flip the next card.
+    await screen.findByRole('button', { name: 'Girar carta' })
+    await flip()
+    await grade(/^Bien/)
+    await screen.findByRole('button', { name: 'Siguiente' })
+    await afterHold()
     await userEvent.keyboard('{Enter}')
-    expect(await screen.findByText('¡Repaso completado!')).toBeInTheDocument()
+    // The browser's auto-repeat while Enter stays down.
+    fireEvent.keyDown(document.body, { key: 'Enter', repeat: true })
+    fireEvent.keyDown(document.body, { key: 'Enter', repeat: true })
+    expect(await screen.findByRole('button', { name: 'Girar carta' })).toBeInTheDocument()
+    expect(screen.queryByTestId('answer')).toBeNull()
+    // Double tap: the second tap lands on Girar carta, in the same spot, and is ignored.
+    await afterHold()
+    await flip()
+    await grade(/^Bien/)
+    await screen.findByRole('button', { name: 'Siguiente' })
+    await afterHold()
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    await flip()
+    expect(screen.queryByTestId('answer')).toBeNull()
+  })
+
+  it('shows the image of a learning card graded Bien, then brings the card back text-only', async () => {
+    stubUrls()
+    db = freshDb()
+    // A new card graded Bien stays in learning and comes back later in the session.
+    await seed(db, [deck('d')], [card('d', 'a', { question: '[猫]がいる。', answer: '猫', imageId: 'd::cat.webp' })])
+    await db.media.put({ id: 'd::cat.webp', deckId: 'd', name: 'cat.webp', type: 'image/webp', data: new ArrayBuffer(3) })
+    renderWith(db, <Review deckId="d" />)
+    await screen.findByRole('button', { name: 'Girar carta' })
+    await flip()
+    await grade(/^Bien/)
+    expect(await screen.findByRole('img', { name: 'Pista visual' })).toBeInTheDocument()
+    await afterHold()
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    await afterHold()
+    await flip()
+    expect(await screen.findByTestId('answer')).toHaveTextContent('猫')
+    expect(document.querySelector('.tcg-card__art')).toBeNull()
   })
 
   it('goes straight on after Bien when the card has no image', async () => {
@@ -198,7 +258,7 @@ describe('Review', () => {
     expect(await screen.findByText('¡Repaso completado!')).toBeInTheDocument()
   })
 
-  it('falls back to a text-only answer when the image is missing or cannot be decoded', async () => {
+  it('skips Siguiente when the image is missing or cannot be decoded', async () => {
     URL.createObjectURL = () => ''
     URL.revokeObjectURL = () => {}
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:broken')
@@ -214,17 +274,17 @@ describe('Review', () => {
     for (let i = 0; i < 2; i++) {
       await screen.findByRole('button', { name: 'Girar carta' })
       await flip()
+      // Graded without the image, as always.
+      expect(screen.getByTestId('answer')).toHaveTextContent(/^(猫|犬)$/)
       await grade(/^Bien/)
-      await screen.findByRole('button', { name: 'Siguiente' })
       // The missing row fails on its own; the undecodable image fails once its <img> renders and errors.
+      // Either way there is no image to show, so it moves on without waiting for Siguiente.
       await waitFor(() => {
         const broken = screen.queryByRole('img', { name: 'Pista visual' })
         if (broken) fireEvent.error(broken)
-        expect(document.querySelector('.tcg-card__art')).toBeNull()
+        expect(screen.queryByRole('button', { name: 'Siguiente' })).toBeNull()
       })
-      // Still a full answer, just without the image.
-      expect(screen.getByTestId('answer')).toHaveTextContent(/^(猫|犬)$/)
-      await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+      await afterHold()
       await waitFor(() => expect(screen.queryByText('¡Repaso completado!') ?? screen.getByRole('button', { name: 'Girar carta' })).toBeInTheDocument())
     }
   })

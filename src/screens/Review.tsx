@@ -10,6 +10,13 @@ import { BackFace, FrontFace } from './study/CardFaces'
 import { requeueIndex } from './study/helpers'
 import './study/study.css'
 
+const DOUBLE_TAP_MS = 400
+
+/** A pointer tap (detail > 0) inside the hold window; keyboard activations always count. */
+function tooSoon(e: { detail: number } | undefined, holdUntil: number): boolean {
+  return !!e && e.detail > 0 && Date.now() < holdUntil
+}
+
 const GRADE_UI: Record<GradeName, { label: string; variant: FacetVariant; key: string }> = {
   again: { label: 'Otra vez', variant: 'ruby', key: '1' },
   hard: { label: 'Difícil', variant: 'amber', key: '2' },
@@ -38,6 +45,8 @@ export default function Review({ deckId }: { deckId?: string }) {
   const [reward, setReward] = useState<{ card: CardRow; deck: DeckRow }>()
   const [error, setError] = useState<string>()
   const busy = useRef(false)
+  // Taps right after the button under the finger changed (Bien → Siguiente → Girar carta) are a double tap, not a choice.
+  const holdUntil = useRef(0)
 
   // Build the queue once per visit; it stays stable while studying even as the DB changes underneath.
   useEffect(() => {
@@ -82,7 +91,10 @@ export default function Review({ deckId }: { deckId?: string }) {
   // Recomputed per card so labels reflect the card's latest state after an in-session requeue.
   const previews = useMemo(() => (current ? preview(current.srs, Date.now()) : []), [current])
 
-  const flip = useCallback(() => setFlipped(true), [])
+  const flip = useCallback((e?: { detail: number }) => {
+    if (tooSoon(e, holdUntil.current)) return
+    setFlipped(true)
+  }, [])
 
   const grade = useCallback(
     async (g: GradeName) => {
@@ -99,7 +111,10 @@ export default function Review({ deckId }: { deckId?: string }) {
           })
         }
         setTally((t) => ({ ...t, [g]: t[g] + 1 }))
-        if ((g === 'good' || g === 'easy') && current.imageId && deck) setReward({ card: updated, deck })
+        if ((g === 'good' || g === 'easy') && current.imageId && deck) {
+          holdUntil.current = Date.now() + DOUBLE_TAP_MS
+          setReward({ card: updated, deck })
+        }
         setPos((p) => p + 1)
         setFlipped(false)
         setError(undefined)
@@ -112,12 +127,23 @@ export default function Review({ deckId }: { deckId?: string }) {
     [current, deck, db, pos],
   )
 
-  const next = useCallback(() => setReward(undefined), [])
+  // Also used when the image turns out to be missing: nothing to look at, so move on.
+  const closeReward = useCallback(() => {
+    holdUntil.current = Date.now() + DOUBLE_TAP_MS
+    setReward(undefined)
+  }, [])
+  const next = useCallback(
+    (e?: { detail: number }) => {
+      if (!tooSoon(e, holdUntil.current)) closeReward()
+    },
+    [closeReward],
+  )
 
   useEffect(() => {
     if (!current && !reward) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey) return
+      // A held key repeats; one press is one action.
+      if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return
       const target = e.target as HTMLElement | null
       // Let focused controls handle their own Space/Enter; keeps one action per key press.
       const onControl = !!target?.closest('button, a, input, textarea, select')
@@ -155,13 +181,14 @@ export default function Review({ deckId }: { deckId?: string }) {
               <h1 className="chrome review__title" lang={deckId ? 'ja' : undefined}>
                 {title ?? 'Repaso'}
               </h1>
-              {current && (
+              {(current || reward) && (
                 <span className="chrome review__count">
-                  {pos + 1} / {ids.length}
+                  {/* While the image shows, the graded card still holds its place. */}
+                  {reward ? pos : pos + 1} / {ids.length}
                 </span>
               )}
             </div>
-            {current && <DiamondPips total={ids.length} done={pos} />}
+            {(current || reward) && <DiamondPips total={ids.length} done={pos} />}
           </div>
         </header>
 
@@ -203,9 +230,9 @@ export default function Review({ deckId }: { deckId?: string }) {
         {reward && (
           <>
             <div className="review__stage">
-              <BackFace key={`r-${pos}`} card={reward.card} deck={reward.deck} showImage />
+              <BackFace key={`r-${pos}`} card={reward.card} deck={reward.deck} showImage onImageFail={closeReward} />
             </div>
-            <FacetButton full onClick={next} className="review__flip">
+            <FacetButton full onClick={next} className="review__flip" autoFocus>
               Siguiente
             </FacetButton>
           </>
