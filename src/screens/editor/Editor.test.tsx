@@ -394,6 +394,8 @@ describe('Editor · images for many cards', () => {
     await u.upload(await screen.findByLabelText(/imágenes para cartas sin imagen/i), [png('a.png'), png('b.png'), png('c.png')])
     expect(await screen.findByText('1 imagen asignada a «犬». 2 sobraron: ya no quedan cartas sin imagen.')).toBeInTheDocument()
     expect(await imageOf(id, '犬')).toBe(`${id}::a.png.webp`)
+    // The picker is now off; the reason stays next to the report.
+    expect(screen.getByText('Todas las cartas ya tienen imagen.')).toBeVisible()
   })
 
   it('skips a file it cannot read and keeps going', async () => {
@@ -419,6 +421,22 @@ describe('Editor · images for many cards', () => {
     expect(await imageOf(id, '猫')).toBe(`${id}::猫.webp`)
     expect(await screen.findByText('1 imagen quitada.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Deshacer' })).toBeNull()
+  })
+
+  it('keeps Deshacer after a failed undo so it can be retried', async () => {
+    resizeByName()
+    const u = user()
+    const id = await deckWith(['犬', '猫'])
+    renderEditor()
+    await u.upload(await screen.findByLabelText(/imágenes para cartas sin imagen/i), [png('a.png'), png('b.png')])
+    await screen.findByText('2 imágenes asignadas, de «犬» a «猫».')
+    const spy = vi.spyOn(db, 'transaction').mockRejectedValueOnce(new Error('quota'))
+    await u.click(screen.getByRole('button', { name: 'Deshacer' }))
+    expect(await screen.findByText('No se pudieron quitar las imágenes.')).toBeInTheDocument()
+    spy.mockRestore()
+    await u.click(screen.getByRole('button', { name: 'Deshacer' }))
+    expect(await screen.findByText('2 imágenes quitadas.')).toBeInTheDocument()
+    expect(await imageOf(id, '犬')).toBeUndefined()
   })
 
   it('is disabled, and says why, when every card already has an image or there are no cards', async () => {

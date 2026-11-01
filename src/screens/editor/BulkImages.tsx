@@ -32,8 +32,11 @@ export function BulkImages({ deckId, cards }: { deckId: string; cards: CardRow[]
   const [message, setMessage] = useState('')
   // The last batch, so it can be undone.
   const [last, setLast] = useState<AssignedImage[]>([])
+  const [undoing, setUndoing] = useState(false)
   // Why the picker is off, if it is.
-  const blocked = cards.length === 0 ? 'El mazo aún no tiene cartas.' : cards.every((c) => c.imageId) ? 'Todas las cartas ya tienen imagen.' : undefined
+  let blocked: string | undefined
+  if (cards.length === 0) blocked = 'El mazo aún no tiene cartas.'
+  else if (cards.every((c) => c.imageId)) blocked = 'Todas las cartas ya tienen imagen.'
 
   const pick = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = [...(e.target.files ?? [])].sort(byName)
@@ -64,6 +67,7 @@ export function BulkImages({ deckId, cards }: { deckId: string; cards: CardRow[]
   }
 
   const undo = async () => {
+    setUndoing(true)
     try {
       const n = await clearImages(db, last)
       setMessage(n === 0 ? 'Nada que deshacer: esas cartas ya cambiaron.' : n === 1 ? '1 imagen quitada.' : `${n} imágenes quitadas.`)
@@ -71,6 +75,8 @@ export function BulkImages({ deckId, cards }: { deckId: string; cards: CardRow[]
     } catch {
       // Deshacer stays, so it can be tried again.
       setMessage('No se pudieron quitar las imágenes.')
+    } finally {
+      setUndoing(false)
     }
   }
 
@@ -89,14 +95,15 @@ export function BulkImages({ deckId, cards }: { deckId: string; cards: CardRow[]
         />
       </label>
       <div className="ed-bulk-status">
-        <span id="ed-bulk-help" className="ed-help" hidden={!!message}>
+        {/* The rule gives way to a report; a reason the picker is off always shows. */}
+        <span id="ed-bulk-help" className="ed-help" hidden={!!message && !blocked}>
           {blocked ?? HELP}
         </span>
         <span role="status" className="ed-help">
           {message}
         </span>
         {last.length > 0 && (
-          <button type="button" className="ed-btn ed-btn--s chrome" onClick={() => void undo()}>
+          <button type="button" className="ed-btn ed-btn--s chrome" disabled={undoing} onClick={() => void undo()}>
             Deshacer
           </button>
         )}
