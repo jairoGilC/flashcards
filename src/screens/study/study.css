@@ -378,6 +378,8 @@
   align-items: center;
   justify-content: center;
   min-height: 0;
+  /* Lets the answer text tighten by the room the card really has (safe areas, Safari toolbars). */
+  container: stage / size;
 }
 .review__flip .facet-btn__body {
   min-height: 52px;
@@ -455,16 +457,16 @@
   color: var(--ink-dim);
   text-align: center;
 }
-/* Short phones (iPhone SE): a sentence plus its translation must still leave room for the image. */
-@media (max-height: 740px) {
-  .study-card .tcg-card__body {
+/* A short stage (iPhone SE, Safari with toolbars): a sentence plus its translation must still leave room for the image. */
+@container stage (max-height: 560px) {
+  .study-card--image .tcg-card__body {
     gap: 6px;
     padding: 10px 14px;
   }
-  .answer-sentence {
+  .study-card--image .answer-sentence {
     font-size: 15px;
   }
-  .answer-translation {
+  .study-card--image .answer-translation {
     font-size: 13px;
   }
 }

@@ -40,10 +40,12 @@ function useImageFrame(slotRef: RefObject<HTMLDivElement>, ratio: number | undef
       // transform) may still be running, and transformed boxes would read too tall.
       const first = body.firstElementChild as HTMLElement
       const last = body.lastElementChild as HTMLElement
+      // Offsets are whole pixels while layout isn't; 1px of slack keeps rounding from making the text box scroll.
       const textHeight =
         last.offsetTop + last.offsetHeight - first.offsetTop +
         px(bodyStyle.paddingTop) +
-        px(bodyStyle.paddingBottom)
+        px(bodyStyle.paddingBottom) +
+        1
       const inner = card.clientHeight - cardPad
       const room = Math.max(inner * MIN_ART_SHARE, inner - band.offsetHeight - textHeight)
       const width = card.clientWidth - px(cardStyle.paddingLeft) - px(cardStyle.paddingRight)
@@ -108,15 +110,19 @@ function speak(text: string) {
   speechSynthesis.speak(u)
 }
 
-export function BackFace({ card, deck }: { card: CardRow; deck: DeckRow }) {
+/** `showImage` is off while grading: the image only comes after a Bien or Fácil. */
+export function BackFace({ card, deck, showImage = false }: { card: CardRow; deck: DeckRow; showImage?: boolean }) {
   const slotRef = useRef<HTMLDivElement>(null)
   const [ratio, setRatio] = useState<number>()
   // A missing or undecodable image leaves a text-only answer rather than an empty frame.
   const [failed, setFailed] = useState(false)
   const onFail = useCallback(() => setFailed(true), [])
-  const hasImage = !!card.imageId && !failed
+  const hasImage = showImage && !!card.imageId && !failed
   const frame = useImageFrame(slotRef, hasImage ? ratio : undefined)
-  const isSentence = parseQuestion(card.question).isSentence
+  const q = parseQuestion(card.question)
+  // The sentence adds context unless it is only the word itself (`[話す]`, or a bare word equal to the answer).
+  const showSentence = q.isSentence ? (q.pre + q.post).trim() !== '' : card.question.trim() !== card.answer.trim()
+  const translation = showSentence ? card.translation?.trim() : undefined
   return (
     <CardSlot slotRef={slotRef}>
       <TcgCard
@@ -162,7 +168,7 @@ export function BackFace({ card, deck }: { card: CardRow; deck: DeckRow }) {
             {card.reading}
           </span>
         )}
-        {card.meaning && (
+        {(card.meaning || translation) && (
           <span className="answer-divider" aria-hidden="true">
             <span />
             <MiniDiamond color="var(--gold)" />
@@ -170,11 +176,9 @@ export function BackFace({ card, deck }: { card: CardRow; deck: DeckRow }) {
           </span>
         )}
         {card.meaning && <span className="answer-meaning">{card.meaning}</span>}
-        {(isSentence || card.question.trim() !== card.answer.trim()) && (
-          <QuestionText question={card.question} className="answer-sentence" />
-        )}
-        {/* On a bare word the translation would just repeat the meaning. */}
-        {isSentence && card.translation && <span className="answer-translation">{card.translation}</span>}
+        {showSentence && <QuestionText question={card.question} className="answer-sentence" />}
+        {/* Without a sentence the translation would just repeat the meaning. */}
+        {translation && <span className="answer-translation">{translation}</span>}
       </TcgCard>
     </CardSlot>
   )

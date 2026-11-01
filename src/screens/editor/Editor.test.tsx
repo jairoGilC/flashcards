@@ -224,6 +224,8 @@ describe('Editor · card form', () => {
     await u.click(await screen.findByRole('button', { name: /editar carta 話す/i }))
     expect(screen.getByRole('heading', { name: 'Editar carta' })).toBeInTheDocument()
     expect(screen.getByLabelText(/^Traducción de la frase/)).toHaveValue('Hablo.')
+    // A bare word never shows its translation; the field says so.
+    expect(screen.getByLabelText(/^Traducción de la frase/)).toHaveAccessibleDescription(/solo se muestra .*frase/i)
     const meaning = screen.getByLabelText('Significado')
     expect(meaning).toHaveValue('hablar')
     await u.clear(meaning)
@@ -237,6 +239,19 @@ describe('Editor · card form', () => {
     expect((await db.cards.get(cardId))!.srs).toEqual(before)
     expect(await db.cards.count()).toBe(1)
     expect(await screen.findByRole('heading', { name: 'Nueva carta' })).toBeInTheDocument()
+  })
+
+  it('clears a translation when the field is emptied', async () => {
+    const u = user()
+    const id = await withDeck()
+    const cardId = await saveCard(db, { deckId: id, question: '[猫]がいる。', answer: '猫', translation: 'Hay un gato.' }, Date.now())
+    renderEditor()
+    await u.click(await screen.findByRole('button', { name: /editar carta 猫/i }))
+    const field = screen.getByLabelText(/^Traducción de la frase/)
+    expect(field).not.toHaveAccessibleDescription(/solo se muestra/i)
+    await u.clear(field)
+    await u.click(screen.getByRole('button', { name: /guardar cambios/i }))
+    await waitFor(async () => expect((await db.cards.get(cardId))?.translation).toBeUndefined())
   })
 
   it('attaches a hint image from the file picker and can remove it before saving', async () => {

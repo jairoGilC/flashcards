@@ -84,8 +84,28 @@ describe('Review', () => {
     expect(screen.queryByText('Hablar.')).toBeNull()
   })
 
-  it('keeps the image off the question side and shows it with the answer', async () => {
-    // jsdom has no object URLs; stub them for the image on the answer side.
+  it('shows the translation with an unmarked sentence, and skips a blank or bracket-only one', async () => {
+    db = freshDb()
+    await seed(db, [deck('d')], [
+      // An imported sentence without [brackets] still shows, so its translation does too.
+      card('d', 'a', { order: 0, question: '毎朝おにぎりを食べます。', answer: '食べる', meaning: 'comer', translation: 'Como un onigiri cada mañana.', srs: dueSrs() }),
+      card('d', 'b', { order: 1, question: '[話す]', answer: '話す', meaning: 'hablar', translation: 'Hablar.', srs: dueSrs() }),
+      card('d', 'c', { order: 2, question: '[猫]がいる。', answer: '猫', meaning: 'gato', translation: '  ', srs: dueSrs() }),
+    ])
+    renderWith(db, <Review deckId="d" />)
+    const seen: Record<string, string | null> = {}
+    for (let i = 0; i < 3; i++) {
+      await screen.findByRole('button', { name: 'Girar carta' })
+      await flip()
+      const answer = (await screen.findByTestId('answer')).textContent!
+      seen[answer] = document.querySelector('.answer-translation')?.textContent ?? null
+      await grade(/^Bien/)
+    }
+    expect(seen).toEqual({ 食べる: 'Como un onigiri cada mañana.', 話す: null, 猫: null })
+  })
+
+  it('keeps the image hidden until the card is graded Bien, then shows it until Siguiente', async () => {
+    // jsdom has no object URLs; stub them for the image.
     URL.createObjectURL = () => ''
     URL.revokeObjectURL = () => {}
     const createUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:hint')
@@ -95,14 +115,19 @@ describe('Review', () => {
     await db.media.put({ id: 'd::onigiri.webp', deckId: 'd', name: 'onigiri.webp', type: 'image/webp', data: new ArrayBuffer(3) })
     renderWith(db, <Review />)
     await screen.findByRole('button', { name: 'Girar carta' })
-    // Give a (wrong) image lookup on the question side time to finish before asserting it never happened.
-    await new Promise((r) => setTimeout(r, 50))
-    expect(createUrl).not.toHaveBeenCalled()
-    expect(screen.queryByRole('img', { name: 'Pista visual' })).toBeNull()
     await flip()
+    expect(await screen.findByTestId('answer')).toHaveTextContent('御握り')
+    // Give a (wrong) image lookup time to finish before asserting it never happened.
+    await new Promise((r) => setTimeout(r, 50))
+    // The answer is text only until the learner says they knew it.
+    expect(createUrl).not.toHaveBeenCalled()
+    expect(document.querySelector('.tcg-card__art')).toBeNull()
+
+    await grade(/^Bien/)
     expect(await screen.findByRole('img', { name: 'Pista visual' })).toBeInTheDocument()
-    // Only the answer side ever loaded the image.
-    expect(createUrl).toHaveBeenCalledTimes(1)
+    // The grade is already saved; only the image is left to see.
+    expect(await db.reviews.count()).toBe(1)
+    expect(screen.queryByRole('button', { name: /^Bien/ })).toBeNull()
     // The art window holds just the image; the sentence sits in the text box below.
     const art = document.querySelector('.tcg-card__art')
     expect(art).not.toBeNull()
@@ -118,6 +143,59 @@ describe('Review', () => {
     await waitFor(() => expect(document.querySelector('.answer-frame')).toHaveAttribute('data-ratio', '1.333'))
     expect(art).not.toHaveTextContent('おにぎり')
     expect(document.querySelector('.tcg-card__body')).toHaveTextContent('おにぎり')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
+    expect(await screen.findByText('¡Repaso completado!')).toBeInTheDocument()
+  })
+
+  it('goes straight to the next card after Otra vez or Difícil, without the image', async () => {
+    URL.createObjectURL = () => ''
+    URL.revokeObjectURL = () => {}
+    const createUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:hint')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    db = freshDb()
+    await seed(db, [deck('d')], [
+      card('d', 'a', { order: 0, question: '[猫]がいる。', answer: '猫', imageId: 'd::cat.webp', srs: dueSrs() }),
+      card('d', 'b', { order: 1, question: '[犬]がいる。', answer: '犬', imageId: 'd::cat.webp', srs: dueSrs() }),
+    ])
+    await db.media.put({ id: 'd::cat.webp', deckId: 'd', name: 'cat.webp', type: 'image/webp', data: new ArrayBuffer(3) })
+    renderWith(db, <Review deckId="d" />)
+    await screen.findByRole('button', { name: 'Girar carta' })
+    await flip()
+    await grade(/^Difícil/)
+    expect(await screen.findByRole('button', { name: 'Girar carta' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Siguiente' })).toBeNull()
+    expect(createUrl).not.toHaveBeenCalled()
+  })
+
+  it('shows the image after Fácil and continues with Enter', async () => {
+    URL.createObjectURL = () => ''
+    URL.revokeObjectURL = () => {}
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:hint')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    db = freshDb()
+    await seed(db, [deck('d')], [card('d', 'a', { question: '[猫]がいる。', answer: '猫', imageId: 'd::cat.webp', srs: dueSrs() })])
+    await db.media.put({ id: 'd::cat.webp', deckId: 'd', name: 'cat.webp', type: 'image/webp', data: new ArrayBuffer(3) })
+    renderWith(db, <Review />)
+    await screen.findByRole('button', { name: 'Girar carta' })
+    await flip()
+    await userEvent.keyboard('4')
+    expect(await screen.findByRole('img', { name: 'Pista visual' })).toBeInTheDocument()
+    // Grade keys do nothing while the image shows; Enter moves on.
+    await userEvent.keyboard('1')
+    expect(await db.reviews.count()).toBe(1)
+    await userEvent.keyboard('{Enter}')
+    expect(await screen.findByText('¡Repaso completado!')).toBeInTheDocument()
+  })
+
+  it('goes straight on after Bien when the card has no image', async () => {
+    db = freshDb()
+    await seed(db, [deck('d')], [card('d', 'a', { question: '[猫]がいる。', answer: '猫', srs: dueSrs() })])
+    renderWith(db, <Review />)
+    await screen.findByRole('button', { name: 'Girar carta' })
+    await flip()
+    await grade(/^Bien/)
+    expect(await screen.findByText('¡Repaso completado!')).toBeInTheDocument()
   })
 
   it('falls back to a text-only answer when the image is missing or cannot be decoded', async () => {
@@ -136,6 +214,8 @@ describe('Review', () => {
     for (let i = 0; i < 2; i++) {
       await screen.findByRole('button', { name: 'Girar carta' })
       await flip()
+      await grade(/^Bien/)
+      await screen.findByRole('button', { name: 'Siguiente' })
       // The missing row fails on its own; the undecodable image fails once its <img> renders and errors.
       await waitFor(() => {
         const broken = screen.queryByRole('img', { name: 'Pista visual' })
@@ -144,7 +224,7 @@ describe('Review', () => {
       })
       // Still a full answer, just without the image.
       expect(screen.getByTestId('answer')).toHaveTextContent(/^(猫|犬)$/)
-      await grade(/^Bien/)
+      await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }))
       await waitFor(() => expect(screen.queryByText('¡Repaso completado!') ?? screen.getByRole('button', { name: 'Girar carta' })).toBeInTheDocument())
     }
   })

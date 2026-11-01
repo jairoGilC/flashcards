@@ -34,6 +34,8 @@ export default function Review({ deckId }: { deckId?: string }) {
   const [pos, setPos] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const [tally, setTally] = useState<Tally>(EMPTY_TALLY)
+  // A card just graded Bien/Fácil that has an image: it stays up, image shown, until Siguiente.
+  const [reward, setReward] = useState<{ card: CardRow; deck: DeckRow }>()
   const [error, setError] = useState<string>()
   const busy = useRef(false)
 
@@ -97,6 +99,7 @@ export default function Review({ deckId }: { deckId?: string }) {
           })
         }
         setTally((t) => ({ ...t, [g]: t[g] + 1 }))
+        if ((g === 'good' || g === 'easy') && current.imageId && deck) setReward({ card: updated, deck })
         setPos((p) => p + 1)
         setFlipped(false)
         setError(undefined)
@@ -106,17 +109,24 @@ export default function Review({ deckId }: { deckId?: string }) {
         busy.current = false
       }
     },
-    [current, db, pos],
+    [current, deck, db, pos],
   )
 
+  const next = useCallback(() => setReward(undefined), [])
+
   useEffect(() => {
-    if (!current) return
+    if (!current && !reward) return
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return
       const target = e.target as HTMLElement | null
       // Let focused controls handle their own Space/Enter; keeps one action per key press.
       const onControl = !!target?.closest('button, a, input, textarea, select')
-      if (!flipped && (e.key === ' ' || e.key === 'Enter') && !onControl) {
+      if (reward) {
+        if ((e.key === ' ' || e.key === 'Enter') && !onControl) {
+          e.preventDefault()
+          next()
+        }
+      } else if (!flipped && (e.key === ' ' || e.key === 'Enter') && !onControl) {
         e.preventDefault()
         flip()
       } else if (flipped && !target?.closest('input, textarea, select')) {
@@ -129,12 +139,12 @@ export default function Review({ deckId }: { deckId?: string }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [current, flipped, flip, grade])
+  }, [current, reward, flipped, flip, grade, next])
 
   const title = deckId ? (load.status === 'locked' ? load.deck.name : load.status === 'ready' ? load.decks.get(deckId)?.name : undefined) : 'Repaso diario · mixto'
 
   return (
-    <main className={`screen screen--night review ${current && deck ? 'review--card' : ''}`}>
+    <main className={`screen screen--night review ${reward || (current && deck) ? 'review--card' : ''}`}>
       <div className="phone-column review__column">
         <header className="review__header">
           <IconButton label="Cerrar repaso" href={href('home')}>
@@ -188,9 +198,20 @@ export default function Review({ deckId }: { deckId?: string }) {
           </Message>
         )}
 
-        {load.status === 'ready' && ids.length > 0 && pos >= ids.length && <Done tally={tally} />}
+        {load.status === 'ready' && ids.length > 0 && pos >= ids.length && !reward && <Done tally={tally} />}
 
-        {current && deck && (
+        {reward && (
+          <>
+            <div className="review__stage">
+              <BackFace key={`r-${pos}`} card={reward.card} deck={reward.deck} showImage />
+            </div>
+            <FacetButton full onClick={next} className="review__flip">
+              Siguiente
+            </FacetButton>
+          </>
+        )}
+
+        {!reward && current && deck && (
           <>
             <div className="review__stage">{flipped ? <BackFace key={`b-${pos}`} card={current} deck={deck} /> : <FrontFace card={current} deck={deck} />}</div>
             {error && (

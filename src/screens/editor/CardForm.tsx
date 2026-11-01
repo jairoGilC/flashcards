@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { useApp } from '../../app/AppContext'
+import { parseQuestion } from '../../core/question'
 import type { CardRow, DeckRow } from '../../db/db'
 import { saveCard } from '../../db/repo'
 import { resizeImage } from '../../media/resizeImage'
@@ -52,6 +53,7 @@ export function CardForm({ deck, editing, onDone }: { deck: DeckRow; editing?: C
   const storedUrl = useMediaUrl(storedId)
   const thumbUrl = chosenUrl ?? storedUrl
   const art = deckArt(deck)
+  const isSentence = parseQuestion(fields.question).isSentence
 
   // Ready for typing as soon as the form appears (new card, or a row picked for editing).
   useEffect(() => questionRef.current?.focus(), [])
@@ -190,7 +192,19 @@ export function CardForm({ deck, editing, onDone }: { deck: DeckRow; editing?: C
           <label className="label" htmlFor="ed-translation">
             Traducción de la frase (opcional)
           </label>
-          <input id="ed-translation" className="field" autoComplete="off" value={fields.translation} onChange={set('translation')} />
+          <input
+            id="ed-translation"
+            className="field"
+            autoComplete="off"
+            value={fields.translation}
+            onChange={set('translation')}
+            aria-describedby={isSentence ? undefined : 'ed-translation-help'}
+          />
+          {!isSentence && (
+            <span id="ed-translation-help" className="ed-help">
+              Solo se muestra cuando la pregunta es una frase con la [palabra] entre corchetes.
+            </span>
+          )}
         </div>
 
         <div className="ed-field">
