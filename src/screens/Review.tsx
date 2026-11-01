@@ -112,6 +112,7 @@ export default function Review({ deckId }: { deckId?: string }) {
           })
         }
         setTally((t) => ({ ...t, [g]: t[g] + 1 }))
+        // After the save, not at the tap: the buttons swap now, so the window starts now.
         holdUntil.current = Date.now() + DOUBLE_TAP_MS
         if ((g === 'good' || g === 'easy') && current.imageId && deck) setReward({ card: updated, deck })
         setPos((p) => p + 1)

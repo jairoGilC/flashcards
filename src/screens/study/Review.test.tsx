@@ -21,8 +21,8 @@ afterEach(() => {
 
 // Taps within the double-tap window after a button swap are ignored, as on the phone; a person pauses longer.
 const afterHold = () => vi.setSystemTime(Date.now() + 500)
-/** A tap right away, as the second half of a double tap. */
-const tap = (name: string | RegExp) => userEvent.click(screen.getByRole('button', { name }))
+/** A tap right away, as the second half of a double tap. Waits for the button (the DB write behind a grade is async), not the clock. */
+const tap = async (name: string | RegExp) => userEvent.click(await screen.findByRole('button', { name }))
 const flip = () => {
   afterHold()
   return tap('Girar carta')
@@ -203,8 +203,9 @@ describe('Review', () => {
     await userEvent.keyboard('4')
     expect(await screen.findByRole('img', { name: 'Pista visual' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Siguiente' })).toHaveFocus()
-    // Still the first card's place in the session.
+    // Still the first card's place in the session, in the count and in the pips.
     expect(screen.getByText('1 / 2')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Carta 1 de 2' })).toBeInTheDocument()
     await userEvent.keyboard('1')
     expect(await db.reviews.count()).toBe(1)
     expect(screen.getByRole('button', { name: 'Siguiente' })).toBeInTheDocument()
